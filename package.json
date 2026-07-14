@@ -1,0 +1,14 @@
+{
+  "name": "leadpilot-local",
+  "version": "1.0.0",
+  "description": "Local-first lead generation and outreach CRM",
+  "scripts": {
+    "start": "concurrently \"npm run backend\" \"npm run frontend\"",
+    "backend": "cd backend && npm start",
+    "frontend": "cd frontend && npm run dev",
+    "install:all": "cd backend && npm install && cd ../frontend && npm install"
+  },
+  "dependencies": {
+    "concurrently": "^8.2.2"
+  }
+}
