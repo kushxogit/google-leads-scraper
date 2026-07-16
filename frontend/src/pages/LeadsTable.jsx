@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import axios from 'axios';
 import { Phone, Globe, MoreHorizontal, MessageCircle, MapPin } from 'lucide-react';
+import Papa from 'papaparse';
 
 export default function LeadsTable() {
   const [leads, setLeads] = useState([]);
@@ -43,6 +44,39 @@ export default function LeadsTable() {
     { title: 'Won', statuses: ['won'] }
   ];
 
+  const exportCSV = () => {
+    const csv = Papa.unparse(filteredLeads);
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    link.href = URL.createObjectURL(blob);
+    link.setAttribute('download', 'leads_export.csv');
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
+  const handleImport = (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    
+    Papa.parse(file, {
+      header: true,
+      skipEmptyLines: true,
+      complete: (results) => {
+        axios.post('http://localhost:3001/api/leads/import', { leads: results.data })
+          .then(res => {
+            alert(`Imported ${res.data.importedCount} leads. Skipped ${res.data.duplicateCount} duplicates.`);
+            fetchLeads();
+          })
+          .catch(err => {
+            console.error(err);
+            alert('Failed to import CSV');
+          });
+      }
+    });
+    e.target.value = '';
+  };
+
   return (
     <div className="space-y-6 animate-in fade-in duration-500 h-[calc(100vh-8rem)] flex flex-col max-w-full overflow-hidden">
       <div className="flex flex-col xl:flex-row justify-between items-start xl:items-center shrink-0 gap-4">
@@ -51,6 +85,13 @@ export default function LeadsTable() {
           <p className="text-zinc-500 font-medium mt-1 text-sm">Track and manage your leads.</p>
         </div>
         <div className="flex flex-col sm:flex-row gap-3 w-full xl:w-auto">
+          <button onClick={exportCSV} className="bg-zinc-800 hover:bg-zinc-700 text-zinc-300 border border-zinc-700 rounded-lg px-4 py-2 text-sm font-medium transition-colors whitespace-nowrap">
+            Export CSV
+          </button>
+          <label className="bg-blue-600/20 hover:bg-blue-600/30 text-blue-400 border border-blue-500/30 rounded-lg px-4 py-2 text-sm font-medium cursor-pointer transition-colors whitespace-nowrap text-center">
+            Import CSV
+            <input type="file" accept=".csv" className="hidden" onChange={handleImport} />
+          </label>
           <select
             value={nicheFilter}
             onChange={e => setNicheFilter(e.target.value)}

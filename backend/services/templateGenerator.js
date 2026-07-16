@@ -35,9 +35,28 @@ I know you're busy right now, but would you be open to me sending over a quick t
 
 [If yes] Great, I will WhatsApp it to this number. Thanks!`;
 
+  const emailSubject = `Quick idea for ${businessName}`;
+  const emailBody = `Hi ${businessName},
+
+We are a team of freelancers from Gurgaon and we noticed your business while checking local services in ${area}.
+
+Since your business is not fully optimized in the online space, as a business like yours, it's highly beneficial to have a strong website to increase reach and visibility in your area.
+
+We will make one for you at a very minimal, affordable charge.
+
+We can also build AI automations for you, like AI Appointment Schedulers, Lead Managers, etc.
+Also, if you are interested in Meta Ads, we can do that too!
+
+Let me know if you are open to seeing some samples.
+
+Best regards,
+[Your Name]`;
+
   return {
     whatsapp,
     call,
+    emailSubject,
+    emailBody,
     observation
   };
 }

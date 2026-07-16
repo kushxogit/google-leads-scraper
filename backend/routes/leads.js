@@ -60,4 +60,58 @@ router.delete('/:id', (req, res) => {
   res.json({ success: true });
 });
 
+router.post('/import', (req, res) => {
+  const leadsToImport = req.body.leads;
+  if (!Array.isArray(leadsToImport)) {
+    return res.status(400).json({ error: 'Expected an array of leads' });
+  }
+
+  const { normalizeLead } = require('../services/leadNormalizer');
+  const { isDuplicate } = require('../services/duplicateChecker');
+  const { scoreLead } = require('../services/leadScorer');
+  const { generateRecommendedOffer } = require('../services/recommendedOfferGenerator');
+
+  let importedCount = 0;
+  let duplicateCount = 0;
+
+  const insertStmt = db.prepare(`
+    INSERT INTO leads (
+      business_name, niche, area, phone, email, website, address,
+      rating, reviews, source, source_url, score, score_breakdown, recommended_offer
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+  `);
+
+  db.transaction(() => {
+    for (const raw of leadsToImport) {
+      const normalized = normalizeLead(raw);
+      if (isDuplicate(normalized)) {
+        duplicateCount++;
+        continue;
+      }
+      const { score, scoreBreakdown } = scoreLead(normalized);
+      const recommendedOffer = generateRecommendedOffer(normalized);
+      
+      insertStmt.run(
+        normalized.businessName,
+        normalized.niche,
+        normalized.area,
+        normalized.phone,
+        normalized.email,
+        normalized.website,
+        normalized.address,
+        normalized.rating,
+        normalized.reviews,
+        normalized.source || 'Manual Import',
+        normalized.sourceUrl,
+        score,
+        scoreBreakdown,
+        recommendedOffer
+      );
+      importedCount++;
+    }
+  })();
+
+  res.json({ success: true, importedCount, duplicateCount });
+});
+
 module.exports = router;

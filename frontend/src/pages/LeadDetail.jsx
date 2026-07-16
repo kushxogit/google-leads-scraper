@@ -175,6 +175,35 @@ export default function LeadDetail() {
                 {lead.templates?.whatsapp}
               </div>
             </div>
+
+            <div className="mt-6">
+              <div className="flex justify-between items-end mb-2">
+                <h3 className="text-xs font-semibold text-zinc-400 uppercase tracking-wider flex items-center gap-1">✉️ Email Outreach</h3>
+                <div className="flex gap-2">
+                  <button 
+                    onClick={() => copyToClipboard(lead.templates?.emailBody)}
+                    className="flex items-center text-xs font-medium text-purple-400 hover:text-purple-300 transition-colors bg-purple-500/10 px-3 py-1.5 rounded-md"
+                  >
+                    {copied ? <Check size={14} className="mr-1" /> : <Copy size={14} className="mr-1" />}
+                    Copy
+                  </button>
+                  {lead.email && (
+                    <a 
+                      href={`https://mail.google.com/mail/?view=cm&fs=1&to=${encodeURIComponent(lead.email)}&su=${encodeURIComponent(lead.templates?.emailSubject || '')}&body=${encodeURIComponent(lead.templates?.emailBody || '')}`}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="flex items-center text-xs font-medium text-red-400 hover:text-red-300 transition-colors bg-red-500/10 px-3 py-1.5 rounded-md"
+                    >
+                      Open in Gmail
+                    </a>
+                  )}
+                </div>
+              </div>
+              <div className="bg-zinc-900/50 border border-zinc-800/80 p-5 rounded-lg text-sm text-zinc-300 font-medium leading-relaxed whitespace-pre-wrap selection:bg-purple-900">
+                <span className="text-zinc-500 font-medium block mb-2">Subject: {lead.templates?.emailSubject}</span>
+                {lead.templates?.emailBody}
+              </div>
+            </div>
           </div>
         </div>
 
@@ -201,6 +230,17 @@ export default function LeadDetail() {
                   <option value="lost">Lost</option>
                   <option value="do_not_contact">Do Not Contact</option>
                 </select>
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-zinc-400 uppercase tracking-wider mb-2">Email Address</label>
+                <input 
+                  type="email" 
+                  value={lead.email || ''} 
+                  onChange={(e) => updateLead('email', e.target.value)}
+                  placeholder="name@company.com"
+                  className="w-full bg-zinc-900/50 border border-zinc-800 text-zinc-300 rounded-lg px-4 py-3 text-sm focus:border-blue-500/50 outline-none shadow-sm"
+                />
               </div>
 
               <div>
