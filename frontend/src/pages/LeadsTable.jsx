@@ -40,10 +40,10 @@ export default function LeadsTable() {
   });
 
   const columns = [
-    { title: 'New & To Call', statuses: ['new', 'to_call'] },
-    { title: 'In Progress', statuses: ['called', 'follow_up'] },
-    { title: 'Hot Leads', statuses: ['interested', 'proposal_sent'] },
-    { title: 'Won', statuses: ['won'] }
+    { title: 'New & To Call', statuses: ['new', 'to_call'], dropStatus: 'to_call' },
+    { title: 'In Progress', statuses: ['called', 'follow_up'], dropStatus: 'called' },
+    { title: 'Hot Leads', statuses: ['interested', 'proposal_sent'], dropStatus: 'interested' },
+    { title: 'Won', statuses: ['won'], dropStatus: 'won' }
   ];
 
   const exportCSV = () => {
@@ -77,6 +77,23 @@ export default function LeadsTable() {
       }
     });
     e.target.value = '';
+  };
+
+  const handleDrop = (e, targetStatus) => {
+    e.preventDefault();
+    const leadId = e.dataTransfer.getData('leadId');
+    if (leadId && targetStatus) {
+      axios.patch(`http://localhost:3001/api/leads/${leadId}`, { status: targetStatus })
+        .then(() => fetchLeads())
+        .catch(err => {
+          console.error('Failed to update status on drop', err);
+          alert('Failed to update status');
+        });
+    }
+  };
+
+  const handleDragOver = (e) => {
+    e.preventDefault(); // Required to allow dropping
   };
 
   return (
@@ -131,7 +148,12 @@ export default function LeadsTable() {
         {columns.map(col => {
           const colLeads = filteredLeads.filter(l => col.statuses.includes(l.status));
           return (
-            <div key={col.title} className="flex-shrink-0 w-80 glass p-4 flex flex-col max-h-full">
+            <div 
+              key={col.title} 
+              className="flex-shrink-0 w-80 glass p-4 flex flex-col max-h-full"
+              onDrop={(e) => handleDrop(e, col.dropStatus)}
+              onDragOver={handleDragOver}
+            >
               <div className="flex justify-between items-center mb-4 px-1 pb-2 border-b border-zinc-800/80">
                 <h3 className="font-semibold text-zinc-300 text-sm">{col.title}</h3>
                 <span className="bg-zinc-800 text-zinc-400 text-xs font-medium px-2 py-0.5 rounded-full">{colLeads.length}</span>
@@ -160,8 +182,17 @@ function LeadCard({ lead, refresh }) {
     axios.patch(`http://localhost:3001/api/leads/${lead.id}`, { status: newStatus }).then(refresh);
   };
 
+  const handleDragStart = (e) => {
+    e.dataTransfer.setData('leadId', lead.id);
+    e.dataTransfer.effectAllowed = 'move';
+  };
+
   return (
-    <div className="bg-zinc-900/80 border border-zinc-800/80 p-4 cursor-grab active:cursor-grabbing hover:border-blue-500/30 hover:bg-zinc-800/60 transition-all duration-300 group relative rounded-lg shadow-sm">
+    <div 
+      draggable={true}
+      onDragStart={handleDragStart}
+      className="bg-zinc-900/80 border border-zinc-800/80 p-4 cursor-grab active:cursor-grabbing hover:border-blue-500/30 hover:bg-zinc-800/60 transition-all duration-300 group relative rounded-lg shadow-sm"
+    >
       <div className="flex justify-between items-start mb-2">
         <Link to={`/leads/${lead.id}`} className="font-semibold text-zinc-200 text-sm leading-tight hover:text-blue-400 block pr-6 truncate">
           {lead.business_name}
