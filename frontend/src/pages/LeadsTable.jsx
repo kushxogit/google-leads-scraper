@@ -1,20 +1,302 @@
-import { useMemo, useState } from 'react';
-import { Link } from 'react-router-dom';
-import { Filter, MapPin, MessageCircle, Plus, Search, Trash2, Users } from 'lucide-react';
-import AddLeadModal from '../components/AddLeadModal';
-import { PIPELINE_STATUSES, useWorkspaceLeads, useWorkspaceMembers } from '../hooks/useCrm';
+import { useMemo, useState } from "react";
+import { Link } from "react-router-dom";
+import {
+  Filter,
+  MapPin,
+  MessageCircle,
+  Plus,
+  Search,
+  Trash2,
+  Upload,
+  Users,
+} from "lucide-react";
+import AddLeadModal from "../components/AddLeadModal";
+import CsvImportModal from "../components/CsvImportModal";
+import {
+  PIPELINE_STATUSES,
+  useWorkspaceLeads,
+  useWorkspaceMembers,
+} from "../hooks/useCrm";
 
-const labels = { new: 'Incoming', contacted: 'Contacted', qualified: 'Qualified', proposal: 'Proposal', won: 'Won', lost: 'Lost' };
-const colors = { new: 'bg-sky-400', contacted: 'bg-violet-400', qualified: 'bg-amber-400', proposal: 'bg-fuchsia-400', won: 'bg-emerald-400', lost: 'bg-zinc-300' };
+const labels = {
+  new: "Incoming",
+  contacted: "Contacted",
+  qualified: "Qualified",
+  proposal: "Proposal",
+  won: "Won",
+  lost: "Lost",
+};
+const colors = {
+  new: "bg-sky-400",
+  contacted: "bg-violet-400",
+  qualified: "bg-amber-400",
+  proposal: "bg-fuchsia-400",
+  won: "bg-emerald-400",
+  lost: "bg-zinc-300",
+};
 
 export default function LeadsTable() {
-  const { leads, isLoading, error, updateLead, bulkUpdate } = useWorkspaceLeads(); const members = useWorkspaceMembers();
-  const [addOpen, setAddOpen] = useState(false); const [search, setSearch] = useState(''); const [selected, setSelected] = useState([]); const [busy, setBusy] = useState(false);
-  const visible = useMemo(() => leads.filter((lead) => `${lead.business_name} ${lead.niche ?? ''} ${lead.area ?? ''}`.toLowerCase().includes(search.toLowerCase())), [leads, search]);
-  const toggle = (id) => setSelected((ids) => ids.includes(id) ? ids.filter((item) => item !== id) : [...ids, id]);
-  const bulk = async (action) => { if (!selected.length || (action.remove && !window.confirm(`Delete ${selected.length} selected lead(s)?`))) return; setBusy(true); try { await bulkUpdate({ ids: selected, ...action }); setSelected([]); } catch (e) { alert(e.message); } finally { setBusy(false); } };
-  if (isLoading) return <div className="panel p-8 text-zinc-500">Loading your pipeline…</div>; if (error) return <div className="panel border-rose-200 p-8 text-rose-600">Could not load leads: {error.message}</div>;
-  return <div className="flex h-[calc(100vh-7.8rem)] min-h-[580px] flex-col gap-5"><header className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between"><div><p className="eyebrow">Opportunity studio</p><h1 className="mt-1 text-4xl font-extrabold tracking-[-.065em] text-zinc-950">Pipeline</h1><p className="mt-2 text-sm text-zinc-500">A fluid view of every conversation in motion.</p></div><div className="flex flex-wrap gap-2"><label className="control flex min-w-[220px] items-center gap-2 py-2.5 shadow-sm"><Search size={16} className="text-zinc-400"/><input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Find a company" className="w-full bg-transparent outline-none"/></label><button className="button-secondary px-3" title="Filters"><Filter size={17}/></button><button onClick={() => setAddOpen(true)} className="button-primary liquid-button"><Plus size={17}/> New opportunity</button></div></header>{selected.length > 0 && <section className="flex flex-wrap items-center gap-3 rounded-3xl border border-violet-200 bg-white/75 px-4 py-3 shadow-[0_12px_30px_rgba(91,65,150,.10)] backdrop-blur-xl"><span className="grid h-8 min-w-8 place-items-center rounded-2xl bg-violet-600 px-2 text-xs font-bold text-white">{selected.length}</span><span className="mr-1 text-sm font-extrabold">selected</span><select defaultValue="" onChange={(e) => e.target.value && bulk({ status: e.target.value })} disabled={busy} className="control py-1.5"><option value="">Move to stage…</option>{PIPELINE_STATUSES.map((status) => <option key={status} value={status}>{labels[status]}</option>)}</select><select defaultValue="" onChange={(e) => e.target.value && bulk({ assignedTo: e.target.value })} disabled={busy} className="control py-1.5"><option value="">Assign owner…</option>{(members.data ?? []).map((member) => <option key={member.id} value={member.id}>{member.full_name || member.email}</option>)}</select><button onClick={() => bulk({ remove: true })} disabled={busy} className="inline-flex items-center gap-1.5 text-sm font-bold text-rose-500"><Trash2 size={15}/> Delete</button><button onClick={() => setSelected([])} className="ml-auto text-sm font-bold text-zinc-400 hover:text-zinc-900">Clear</button></section>}<section className="scrollbar-thin flex min-h-0 flex-1 gap-3 overflow-x-auto pb-2">{PIPELINE_STATUSES.map((status) => <Column key={status} status={status} leads={visible.filter((lead) => lead.status === status)} selected={selected} onToggle={toggle} onDrop={(id) => updateLead(id, { status })}/>)}</section><AddLeadModal isOpen={addOpen} onClose={() => setAddOpen(false)}/></div>;
+  const { leads, isLoading, error, updateLead, bulkUpdate, addLead } =
+    useWorkspaceLeads();
+  const members = useWorkspaceMembers();
+  const [addOpen, setAddOpen] = useState(false);
+  const [importOpen, setImportOpen] = useState(false);
+  const [search, setSearch] = useState("");
+  const [selected, setSelected] = useState([]);
+  const [busy, setBusy] = useState(false);
+  const visible = useMemo(
+    () =>
+      leads.filter((lead) =>
+        `${lead.business_name} ${lead.niche ?? ""} ${lead.area ?? ""}`
+          .toLowerCase()
+          .includes(search.toLowerCase()),
+      ),
+    [leads, search],
+  );
+  const toggle = (id) =>
+    setSelected((ids) =>
+      ids.includes(id) ? ids.filter((item) => item !== id) : [...ids, id],
+    );
+  const bulk = async (action) => {
+    if (
+      !selected.length ||
+      (action.remove &&
+        !window.confirm(`Delete ${selected.length} selected lead(s)?`))
+    )
+      return;
+    setBusy(true);
+    try {
+      await bulkUpdate({ ids: selected, ...action });
+      setSelected([]);
+    } catch (e) {
+      alert(e.message);
+    } finally {
+      setBusy(false);
+    }
+  };
+  if (isLoading)
+    return (
+      <div className="panel p-8 text-zinc-500">Loading your pipeline…</div>
+    );
+  if (error)
+    return (
+      <div className="panel border-rose-200 p-8 text-rose-600">
+        Could not load leads: {error.message}
+      </div>
+    );
+  return (
+    <div className="flex h-[calc(100vh-7.8rem)] min-h-[580px] flex-col gap-5">
+      <header className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+        <div>
+          <p className="eyebrow">Opportunity studio</p>
+          <h1 className="mt-1 text-4xl font-extrabold tracking-[-.065em] text-zinc-950">
+            Pipeline
+          </h1>
+          <p className="mt-2 text-sm text-zinc-500">
+            A fluid view of every conversation in motion.
+          </p>
+        </div>
+        <div className="flex flex-wrap gap-2">
+          <label className="control flex min-w-[220px] items-center gap-2 py-2.5 shadow-sm">
+            <Search size={16} className="text-zinc-400" />
+            <input
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="Find a company"
+              className="w-full bg-transparent outline-none"
+            />
+          </label>
+          <button className="button-secondary px-3" title="Filters">
+            <Filter size={17} />
+          </button>
+          <button
+            onClick={() => setImportOpen(true)}
+            className="button-secondary"
+          >
+            <Upload size={16} /> Import CSV
+          </button>
+          <button
+            onClick={() => setAddOpen(true)}
+            className="button-primary liquid-button"
+          >
+            <Plus size={17} /> New opportunity
+          </button>
+        </div>
+      </header>
+      {selected.length > 0 && (
+        <section className="flex flex-wrap items-center gap-3 rounded-3xl border border-violet-200 bg-white/75 px-4 py-3 shadow-[0_12px_30px_rgba(91,65,150,.10)] backdrop-blur-xl">
+          <span className="grid h-8 min-w-8 place-items-center rounded-2xl bg-violet-600 px-2 text-xs font-bold text-white">
+            {selected.length}
+          </span>
+          <span className="mr-1 text-sm font-extrabold">selected</span>
+          <select
+            defaultValue=""
+            onChange={(e) => e.target.value && bulk({ status: e.target.value })}
+            disabled={busy}
+            className="control py-1.5"
+          >
+            <option value="">Move to stage…</option>
+            {PIPELINE_STATUSES.map((status) => (
+              <option key={status} value={status}>
+                {labels[status]}
+              </option>
+            ))}
+          </select>
+          <select
+            defaultValue=""
+            onChange={(e) =>
+              e.target.value && bulk({ assignedTo: e.target.value })
+            }
+            disabled={busy}
+            className="control py-1.5"
+          >
+            <option value="">Assign owner…</option>
+            {(members.data ?? []).map((member) => (
+              <option key={member.id} value={member.id}>
+                {member.full_name || member.email}
+              </option>
+            ))}
+          </select>
+          <button
+            onClick={() => bulk({ remove: true })}
+            disabled={busy}
+            className="inline-flex items-center gap-1.5 text-sm font-bold text-rose-500"
+          >
+            <Trash2 size={15} /> Delete
+          </button>
+          <button
+            onClick={() => setSelected([])}
+            className="ml-auto text-sm font-bold text-zinc-400 hover:text-zinc-900"
+          >
+            Clear
+          </button>
+        </section>
+      )}
+      <section className="scrollbar-thin flex min-h-0 flex-1 gap-3 overflow-x-auto pb-2">
+        {PIPELINE_STATUSES.map((status) => (
+          <Column
+            key={status}
+            status={status}
+            leads={visible.filter((lead) => lead.status === status)}
+            selected={selected}
+            onToggle={toggle}
+            onDrop={(id) => updateLead(id, { status })}
+          />
+        ))}
+      </section>
+      <AddLeadModal isOpen={addOpen} onClose={() => setAddOpen(false)} />
+      <CsvImportModal
+        open={importOpen}
+        onClose={() => setImportOpen(false)}
+        addLead={addLead}
+        existingLeads={leads}
+      />
+    </div>
+  );
 }
-function Column({ status, leads, selected, onToggle, onDrop }) { return <section className="flex w-[290px] shrink-0 flex-col rounded-[26px] border border-white/80 bg-white/45 p-2.5 shadow-[0_10px_35px_rgba(55,45,85,.07)] backdrop-blur-md" onDragOver={(e) => e.preventDefault()} onDrop={(e) => { const id = e.dataTransfer.getData('lead-id'); if (id) onDrop(id); }}><header className="mb-2 flex items-center justify-between px-2 py-2"><div className="flex items-center gap-2"><span className={`h-2.5 w-2.5 rounded-full shadow-[0_0_0_4px_rgba(255,255,255,.65)] ${colors[status]}`}/><h2 className="text-sm font-extrabold text-zinc-700">{labels[status]}</h2></div><span className="mono rounded-lg bg-zinc-900/[.06] px-2 py-0.5 text-[11px] text-zinc-500">{leads.length}</span></header><div className="scrollbar-thin min-h-0 flex-1 space-y-2 overflow-y-auto">{leads.map((lead) => <LeadCard key={lead.id} lead={lead} checked={selected.includes(lead.id)} onToggle={() => onToggle(lead.id)}/>)}{!leads.length && <div className="m-1 rounded-2xl border border-dashed border-zinc-200 bg-white/30 p-5 text-center text-xs text-zinc-400">Drop an opportunity here</div>}</div></section>; }
-function LeadCard({ lead, checked, onToggle }) { const score = lead.score || 0; return <article draggable onDragStart={(e) => e.dataTransfer.setData('lead-id', lead.id)} className="group cursor-grab rounded-2xl border border-white bg-white/85 p-3.5 shadow-[0_4px_12px_rgba(57,46,89,.07)] transition hover:-translate-y-1 hover:shadow-[0_14px_28px_rgba(76,54,132,.16)] active:cursor-grabbing"><div className="flex items-start gap-2"><input aria-label={`Select ${lead.business_name}`} type="checkbox" checked={checked} onChange={onToggle} onClick={(e) => e.stopPropagation()} className="mt-1 h-3.5 w-3.5 accent-violet-600"/><Link to={`/leads/${lead.id}`} className="min-w-0 flex-1"><p className="truncate text-sm font-extrabold text-zinc-900 group-hover:text-violet-700">{lead.business_name}</p><p className="mt-0.5 truncate text-xs text-zinc-400">{lead.company || lead.niche || 'Opportunity'}</p></Link>{score > 0 && <span className={`mono grid h-7 min-w-7 place-items-center rounded-xl text-[10px] font-bold ${score >= 70 ? 'bg-emerald-100 text-emerald-700' : 'bg-violet-100 text-violet-700'}`}>{score}</span>}</div><div className="mt-3 flex items-center gap-3 border-t border-zinc-100 pt-3 pl-5 text-xs text-zinc-400">{lead.area && <span className="flex min-w-0 items-center gap-1 truncate"><MapPin size={13}/>{lead.area}</span>}<span className="ml-auto flex items-center gap-1">{lead.assigned_to ? <><Users size={13}/>Assigned</> : 'Unassigned'}</span>{lead.phone && <a onClick={(e) => e.stopPropagation()} href={`https://wa.me/${lead.phone.replace(/\D/g, '')}`} target="_blank" rel="noreferrer" className="text-emerald-500 hover:text-emerald-600"><MessageCircle size={15}/></a>}</div></article>; }
+function Column({ status, leads, selected, onToggle, onDrop }) {
+  return (
+    <section
+      className="flex w-[290px] shrink-0 flex-col rounded-[26px] border border-white/80 bg-white/45 p-2.5 shadow-[0_10px_35px_rgba(55,45,85,.07)] backdrop-blur-md"
+      onDragOver={(e) => e.preventDefault()}
+      onDrop={(e) => {
+        const id = e.dataTransfer.getData("lead-id");
+        if (id) onDrop(id);
+      }}
+    >
+      <header className="mb-2 flex items-center justify-between px-2 py-2">
+        <div className="flex items-center gap-2">
+          <span
+            className={`h-2.5 w-2.5 rounded-full shadow-[0_0_0_4px_rgba(255,255,255,.65)] ${colors[status]}`}
+          />
+          <h2 className="text-sm font-extrabold text-zinc-700">
+            {labels[status]}
+          </h2>
+        </div>
+        <span className="mono rounded-lg bg-zinc-900/[.06] px-2 py-0.5 text-[11px] text-zinc-500">
+          {leads.length}
+        </span>
+      </header>
+      <div className="scrollbar-thin min-h-0 flex-1 space-y-2 overflow-y-auto">
+        {leads.map((lead) => (
+          <LeadCard
+            key={lead.id}
+            lead={lead}
+            checked={selected.includes(lead.id)}
+            onToggle={() => onToggle(lead.id)}
+          />
+        ))}
+        {!leads.length && (
+          <div className="m-1 rounded-2xl border border-dashed border-zinc-200 bg-white/30 p-5 text-center text-xs text-zinc-400">
+            Drop an opportunity here
+          </div>
+        )}
+      </div>
+    </section>
+  );
+}
+function LeadCard({ lead, checked, onToggle }) {
+  const score = lead.score || 0;
+  return (
+    <article
+      draggable
+      onDragStart={(e) => e.dataTransfer.setData("lead-id", lead.id)}
+      className="group cursor-grab rounded-2xl border border-white bg-white/85 p-3.5 shadow-[0_4px_12px_rgba(57,46,89,.07)] transition hover:-translate-y-1 hover:shadow-[0_14px_28px_rgba(76,54,132,.16)] active:cursor-grabbing"
+    >
+      <div className="flex items-start gap-2">
+        <input
+          aria-label={`Select ${lead.business_name}`}
+          type="checkbox"
+          checked={checked}
+          onChange={onToggle}
+          onClick={(e) => e.stopPropagation()}
+          className="mt-1 h-3.5 w-3.5 accent-violet-600"
+        />
+        <Link to={`/leads/${lead.id}`} className="min-w-0 flex-1">
+          <p className="truncate text-sm font-extrabold text-zinc-900 group-hover:text-violet-700">
+            {lead.business_name}
+          </p>
+          <p className="mt-0.5 truncate text-xs text-zinc-400">
+            {lead.company || lead.niche || "Opportunity"}
+          </p>
+        </Link>
+        {score > 0 && (
+          <span
+            className={`mono grid h-7 min-w-7 place-items-center rounded-xl text-[10px] font-bold ${score >= 70 ? "bg-emerald-100 text-emerald-700" : "bg-violet-100 text-violet-700"}`}
+          >
+            {score}
+          </span>
+        )}
+      </div>
+      <div className="mt-3 flex items-center gap-3 border-t border-zinc-100 pt-3 pl-5 text-xs text-zinc-400">
+        {lead.area && (
+          <span className="flex min-w-0 items-center gap-1 truncate">
+            <MapPin size={13} />
+            {lead.area}
+          </span>
+        )}
+        <span className="ml-auto flex items-center gap-1">
+          {lead.assigned_to ? (
+            <>
+              <Users size={13} />
+              Assigned
+            </>
+          ) : (
+            "Unassigned"
+          )}
+        </span>
+        {lead.phone && (
+          <a
+            onClick={(e) => e.stopPropagation()}
+            href={`https://wa.me/${lead.phone.replace(/\D/g, "")}`}
+            target="_blank"
+            rel="noreferrer"
+            className="text-emerald-500 hover:text-emerald-600"
+          >
+            <MessageCircle size={15} />
+          </a>
+        )}
+      </div>
+    </article>
+  );
+}

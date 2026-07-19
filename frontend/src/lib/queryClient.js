@@ -1,5 +1,5 @@
-import { QueryClient } from '@tanstack/react-query';
-import { createSyncStoragePersister } from '@tanstack/query-sync-storage-persister';
+import { QueryClient } from "@tanstack/react-query";
+import { createSyncStoragePersister } from "@tanstack/query-sync-storage-persister";
 
 export const queryClient = new QueryClient({
   defaultOptions: {
@@ -8,4 +8,7 @@ export const queryClient = new QueryClient({
   },
 });
 
-export const queryPersister = createSyncStoragePersister({ storage: window.localStorage, key: 'leadpilot.query-cache' });
+export const queryPersister = createSyncStoragePersister({
+  storage: window.localStorage,
+  key: "leadpilot.query-cache",
+});

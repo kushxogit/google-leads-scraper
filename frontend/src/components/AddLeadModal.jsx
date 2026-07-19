@@ -1,12 +1,117 @@
-import { useState } from 'react';
-import { Sparkles, X } from 'lucide-react';
-import { PIPELINE_STATUSES, useWorkspaceLeads } from '../hooks/useCrm';
+import { useState } from "react";
+import { Sparkles, X } from "lucide-react";
+import { PIPELINE_STATUSES, useWorkspaceLeads } from "../hooks/useCrm";
 
-const fields = [['business_name', 'Business name', true], ['phone', 'Phone'], ['email', 'Email'], ['website', 'Website'], ['niche', 'Industry'], ['area', 'Location']];
+const fields = [
+  ["business_name", "Business name", true],
+  ["phone", "Phone"],
+  ["email", "Email"],
+  ["website", "Website"],
+  ["niche", "Industry"],
+  ["area", "Location"],
+];
 
 export default function AddLeadModal({ isOpen, onClose }) {
-  const { addLead } = useWorkspaceLeads(); const [form, setForm] = useState({ business_name: '', phone: '', email: '', website: '', niche: '', area: '', status: 'new' }); const [saving, setSaving] = useState(false);
+  const { addLead } = useWorkspaceLeads();
+  const [form, setForm] = useState({
+    business_name: "",
+    phone: "",
+    email: "",
+    website: "",
+    niche: "",
+    area: "",
+    status: "new",
+  });
+  const [saving, setSaving] = useState(false);
   if (!isOpen) return null;
-  const submit = async (event) => { event.preventDefault(); setSaving(true); try { await addLead(form); setForm({ business_name: '', phone: '', email: '', website: '', niche: '', area: '', status: 'new' }); onClose(); } catch (e) { alert(e.message); } finally { setSaving(false); } };
-  return <div className="fixed inset-0 z-[70] grid place-items-center bg-[#09090b]/80 p-4 backdrop-blur-sm"><form onSubmit={submit} className="w-full max-w-xl overflow-hidden rounded-2xl border border-white/[.1] bg-[#141419] shadow-2xl"><header className="flex items-start justify-between border-b border-white/[.07] p-6"><div className="flex gap-3"><span className="grid h-10 w-10 place-items-center rounded-xl bg-violet-500/15 text-violet-200"><Sparkles size={18}/></span><div><p className="text-lg font-extrabold">Add opportunity</p><p className="mt-1 text-sm text-zinc-500">Capture the essentials now. Enrich the profile later.</p></div></div><button type="button" onClick={onClose} className="rounded-lg p-1 text-zinc-500 hover:bg-white/[.06] hover:text-white"><X size={20}/></button></header><div className="grid gap-4 p-6 sm:grid-cols-2">{fields.map(([key, label, required]) => <label key={key} className={`text-xs font-bold uppercase tracking-[.12em] text-zinc-500 ${key === 'business_name' ? 'sm:col-span-2' : ''}`}>{label}<input required={required} type={key === 'email' ? 'email' : 'text'} value={form[key]} onChange={(e) => setForm({ ...form, [key]: e.target.value })} className="control mt-2 w-full normal-case tracking-normal" placeholder={key === 'business_name' ? 'e.g. Northstar Studios' : ''}/></label>)}<label className="text-xs font-bold uppercase tracking-[.12em] text-zinc-500">Starting stage<select value={form.status} onChange={(e) => setForm({ ...form, status: e.target.value })} className="control mt-2 w-full normal-case tracking-normal">{PIPELINE_STATUSES.map((status) => <option key={status}>{status}</option>)}</select></label></div><footer className="flex justify-end gap-3 border-t border-white/[.07] bg-black/10 p-5"><button type="button" onClick={onClose} className="button-secondary">Cancel</button><button disabled={saving} className="button-primary">{saving ? 'Creating…' : 'Create lead'}</button></footer></form></div>;
+  const submit = async (event) => {
+    event.preventDefault();
+    setSaving(true);
+    try {
+      await addLead(form);
+      setForm({
+        business_name: "",
+        phone: "",
+        email: "",
+        website: "",
+        niche: "",
+        area: "",
+        status: "new",
+      });
+      onClose();
+    } catch (e) {
+      alert(e.message);
+    } finally {
+      setSaving(false);
+    }
+  };
+  return (
+    <div className="fixed inset-0 z-[70] grid place-items-center bg-[#09090b]/80 p-4 backdrop-blur-sm">
+      <form
+        onSubmit={submit}
+        className="w-full max-w-xl overflow-hidden rounded-2xl border border-white/[.1] bg-[#141419] shadow-2xl"
+      >
+        <header className="flex items-start justify-between border-b border-white/[.07] p-6">
+          <div className="flex gap-3">
+            <span className="grid h-10 w-10 place-items-center rounded-xl bg-violet-500/15 text-violet-200">
+              <Sparkles size={18} />
+            </span>
+            <div>
+              <p className="text-lg font-extrabold">Add opportunity</p>
+              <p className="mt-1 text-sm text-zinc-500">
+                Capture the essentials now. Enrich the profile later.
+              </p>
+            </div>
+          </div>
+          <button
+            type="button"
+            onClick={onClose}
+            className="rounded-lg p-1 text-zinc-500 hover:bg-white/[.06] hover:text-white"
+          >
+            <X size={20} />
+          </button>
+        </header>
+        <div className="grid gap-4 p-6 sm:grid-cols-2">
+          {fields.map(([key, label, required]) => (
+            <label
+              key={key}
+              className={`text-xs font-bold uppercase tracking-[.12em] text-zinc-500 ${key === "business_name" ? "sm:col-span-2" : ""}`}
+            >
+              {label}
+              <input
+                required={required}
+                type={key === "email" ? "email" : "text"}
+                value={form[key]}
+                onChange={(e) => setForm({ ...form, [key]: e.target.value })}
+                className="control mt-2 w-full normal-case tracking-normal"
+                placeholder={
+                  key === "business_name" ? "e.g. Northstar Studios" : ""
+                }
+              />
+            </label>
+          ))}
+          <label className="text-xs font-bold uppercase tracking-[.12em] text-zinc-500">
+            Starting stage
+            <select
+              value={form.status}
+              onChange={(e) => setForm({ ...form, status: e.target.value })}
+              className="control mt-2 w-full normal-case tracking-normal"
+            >
+              {PIPELINE_STATUSES.map((status) => (
+                <option key={status}>{status}</option>
+              ))}
+            </select>
+          </label>
+        </div>
+        <footer className="flex justify-end gap-3 border-t border-white/[.07] bg-black/10 p-5">
+          <button type="button" onClick={onClose} className="button-secondary">
+            Cancel
+          </button>
+          <button disabled={saving} className="button-primary">
+            {saving ? "Creating…" : "Create lead"}
+          </button>
+        </footer>
+      </form>
+    </div>
+  );
 }

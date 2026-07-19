@@ -1,22 +1,430 @@
-import { useEffect, useState } from 'react';
-import { ArrowLeft, Download, Link2, MessageCircle, Paperclip, Send, Trash2 } from 'lucide-react';
-import { Link, useNavigate, useParams } from 'react-router-dom';
-import { supabase } from '../lib/supabase';
-import { addLeadNote, PIPELINE_STATUSES, trackWhatsAppClick, useLeadDetail, useWorkspaceLeads } from '../hooks/useCrm';
-import { useAuthWorkspace } from '../context/AuthWorkspaceContext';
+import { useCallback, useEffect, useState } from "react";
+import {
+  ArrowLeft,
+  CheckSquare2,
+  Download,
+  Link2,
+  MessageCircle,
+  Paperclip,
+  Send,
+  Trash2,
+} from "lucide-react";
+import { Link, useNavigate, useParams } from "react-router-dom";
+import { supabase } from "../lib/supabase";
+import {
+  addLeadNote,
+  PIPELINE_STATUSES,
+  trackWhatsAppClick,
+  useLeadDetail,
+  useWorkspaceLeads,
+} from "../hooks/useCrm";
+import { useAuthWorkspace } from "../context/AuthWorkspaceContext";
+import TaskModal from "../components/TaskModal";
+import { useWorkspaceTasks } from "../hooks/useTasks";
 
 export default function LeadDetail() {
-  const { id } = useParams(); const navigate = useNavigate(); const { user, activeWorkspaceId } = useAuthWorkspace(); const { lead, notes, activity, members } = useLeadDetail(id); const { updateLead, deleteLead } = useWorkspaceLeads();
-  const [note, setNote] = useState(''); const [attachments, setAttachments] = useState([]); const [uploading, setUploading] = useState(false); const current = lead.data;
-  const loadAttachments = async () => { const { data } = await supabase.from('lead_attachments').select('*').eq('lead_id', id).order('created_at', { ascending: false }); setAttachments(data ?? []); };
-  useEffect(() => { if (id) loadAttachments(); }, [id]);
-  if (lead.isLoading) return <div className="panel p-8 text-zinc-500">Opening opportunity…</div>; if (!current) return <div className="panel p-8 text-rose-500">This opportunity is unavailable.</div>;
-  const update = async (changes) => { try { await updateLead(id, changes); await lead.refetch(); } catch (e) { alert(e.message); } };
-  const submitNote = async (event) => { event.preventDefault(); if (!note.trim()) return; try { await addLeadNote({ leadId: id, workspaceId: activeWorkspaceId, authorId: user.id, body: note.trim() }); setNote(''); await notes.refetch(); } catch (e) { alert(e.message); } };
-  const whatsapp = async () => { try { await trackWhatsAppClick(id); } finally { window.open(`https://wa.me/${current.phone.replace(/\D/g, '')}`, '_blank', 'noopener,noreferrer'); } };
-  const upload = async (event) => { const file = event.target.files?.[0]; event.target.value = ''; if (!file) return; if (!['application/pdf','image/jpeg','image/png','image/webp'].includes(file.type) || file.size > 10 * 1024 * 1024) return alert('Use a PDF, JPG, PNG, or WebP under 10 MB.'); setUploading(true); const path = `${activeWorkspaceId}/${id}/${crypto.randomUUID()}-${file.name}`; try { const { error: fileError } = await supabase.storage.from('lead-attachments').upload(path, file, { contentType: file.type }); if (fileError) throw fileError; const { error: metadataError } = await supabase.from('lead_attachments').insert({ lead_id: id, workspace_id: activeWorkspaceId, uploaded_by: user.id, storage_path: path, file_name: file.name, mime_type: file.type, size_bytes: file.size }); if (metadataError) throw metadataError; await loadAttachments(); } catch (e) { alert(e.message); } finally { setUploading(false); } };
-  const remove = async (file) => { if (!window.confirm(`Delete ${file.file_name}?`)) return; const { error } = await supabase.from('lead_attachments').delete().eq('id', file.id); if (error) return alert(error.message); await supabase.storage.from('lead-attachments').remove([file.storage_path]); await loadAttachments(); };
-  const download = async (file) => { const { data, error } = await supabase.storage.from('lead-attachments').createSignedUrl(file.storage_path, 60); if (error) return alert(error.message); window.open(data.signedUrl, '_blank', 'noopener,noreferrer'); };
-  return <div className="mx-auto max-w-[1320px] space-y-5 pb-8"><Link to="/leads" className="inline-flex items-center gap-2 text-sm font-bold text-zinc-500 hover:text-zinc-950"><ArrowLeft size={16}/> Back to pipeline</Link><section className="relative overflow-hidden rounded-[30px] bg-[#171719] p-6 text-white shadow-[0_20px_45px_rgba(50,35,105,.18)] sm:p-8"><div className="absolute -right-10 -top-20 h-64 w-64 rounded-full bg-violet-500/70 blur-[70px]"/><div className="relative flex flex-col gap-6 lg:flex-row lg:items-end"><div className="min-w-0 flex-1"><p className="text-[10px] font-extrabold uppercase tracking-[.18em] text-violet-200">Opportunity profile</p><h1 className="mt-3 truncate text-4xl font-extrabold tracking-[-.06em] sm:text-5xl">{current.business_name}</h1><p className="mt-3 text-sm text-zinc-300">{[current.niche, current.area, current.company].filter(Boolean).join(' · ') || 'A new opportunity'}</p></div><div className="flex flex-wrap gap-2"><select value={current.status} onChange={(e) => update({ status: e.target.value })} className="rounded-2xl border border-white/[.15] bg-white/[.1] px-3 py-2.5 text-sm font-bold text-white outline-none"><option className="text-zinc-900">{current.status}</option>{PIPELINE_STATUSES.filter((s) => s !== current.status).map((status) => <option className="text-zinc-900" key={status}>{status}</option>)}</select>{current.phone && <button onClick={whatsapp} className="inline-flex items-center gap-2 rounded-2xl bg-white px-4 py-2.5 text-sm font-extrabold text-zinc-950"><MessageCircle size={16}/> WhatsApp</button>}<button onClick={async () => { if (window.confirm('Delete this opportunity?')) { await deleteLead(id); navigate('/leads'); } }} className="grid h-10 w-10 place-items-center rounded-2xl border border-white/[.15] text-rose-200 hover:bg-white/[.1]"><Trash2 size={16}/></button></div></div></section><div className="grid gap-5 lg:grid-cols-[1.15fr_.85fr]"><main className="space-y-5"><section className="panel p-5 sm:p-6"><p className="eyebrow">Contact essentials</p><h2 className="mt-1 text-xl font-extrabold tracking-tight">Everything in one quiet place.</h2><div className="mt-6 grid gap-4 sm:grid-cols-2"><Field label="Email" value={current.email} onBlur={(value) => update({ email: value })}/><Field label="Phone" value={current.phone} onBlur={(value) => update({ phone: value })}/><Field label="Website" value={current.website} onBlur={(value) => update({ website: value })}/><Field label="Source" value={current.source} onBlur={(value) => update({ source: value })}/></div></section><section className="panel p-5 sm:p-6"><div className="flex items-center justify-between"><div><p className="eyebrow">Files</p><h2 className="mt-1 text-xl font-extrabold">Shared attachments</h2></div><label className="button-secondary cursor-pointer"><Paperclip size={15}/>{uploading ? 'Uploading…' : 'Attach'}<input type="file" disabled={uploading} accept="application/pdf,image/jpeg,image/png,image/webp" className="hidden" onChange={upload}/></label></div><div className="mt-5 space-y-2">{attachments.map((file) => <div key={file.id} className="flex items-center gap-3 rounded-2xl border border-zinc-100 bg-white/55 p-3"><span className="grid h-9 w-9 place-items-center rounded-xl bg-violet-100 text-violet-600"><Link2 size={15}/></span><span className="min-w-0 flex-1 truncate text-sm font-bold">{file.file_name}</span><button onClick={() => download(file)} className="text-zinc-500 hover:text-violet-600"><Download size={16}/></button><button onClick={() => remove(file)} className="text-zinc-400 hover:text-rose-500"><Trash2 size={16}/></button></div>)}{!attachments.length && <p className="rounded-2xl border border-dashed border-zinc-200 p-6 text-center text-sm text-zinc-400">Nothing attached yet.</p>}</div></section></main><aside className="space-y-5"><section className="panel p-5"><p className="eyebrow">Ownership</p><h2 className="mt-1 text-lg font-extrabold">Keep it moving</h2><label className="mt-5 block text-xs font-bold uppercase tracking-[.12em] text-zinc-400">Owner<select value={current.assigned_to ?? ''} onChange={(e) => update({ assigned_to: e.target.value || null })} className="control mt-2 w-full normal-case tracking-normal"><option value="">Unassigned</option>{(members.data ?? []).map((member) => <option key={member.id} value={member.id}>{member.full_name || member.email}</option>)}</select></label></section><section className="panel p-5"><p className="eyebrow">Shared context</p><h2 className="mt-1 text-lg font-extrabold">Notes</h2><form onSubmit={submitNote} className="mt-4 flex gap-2"><input value={note} onChange={(e) => setNote(e.target.value)} placeholder="Leave an update" className="control min-w-0 flex-1"/><button className="grid h-10 w-10 place-items-center rounded-2xl liquid-button text-white"><Send size={15}/></button></form><div className="mt-5 max-h-56 space-y-4 overflow-y-auto">{(notes.data ?? []).map((item) => <div key={item.id} className="border-l-2 border-violet-300 pl-3"><p className="text-sm font-medium text-zinc-700">{item.body}</p><p className="mt-1 text-[11px] text-zinc-400">{new Date(item.created_at).toLocaleString()}</p></div>)}{!notes.data?.length && <p className="text-sm text-zinc-400">No updates yet.</p>}</div></section><section className="panel p-5"><p className="eyebrow">Signal trail</p><h2 className="mt-1 text-lg font-extrabold">Activity</h2><div className="mt-5 max-h-52 space-y-4 overflow-y-auto">{(activity.data ?? []).map((item) => <div key={item.id} className="flex gap-3"><span className="mt-1.5 h-2 w-2 shrink-0 rounded-full bg-violet-400"/><div><p className="text-sm font-bold capitalize text-zinc-700">{item.event_type.replace('_', ' ')}</p><p className="mt-1 text-[11px] text-zinc-400">{new Date(item.created_at).toLocaleString()}</p></div></div>)}{!activity.data?.length && <p className="text-sm text-zinc-400">No activity yet.</p>}</div></section></aside></div></div>;
+  const { id } = useParams();
+  const navigate = useNavigate();
+  const { user, activeWorkspaceId } = useAuthWorkspace();
+  const { lead, notes, activity, members } = useLeadDetail(id);
+  const { updateLead, deleteLead } = useWorkspaceLeads();
+  const taskApi = useWorkspaceTasks();
+  const [note, setNote] = useState("");
+  const [attachments, setAttachments] = useState([]);
+  const [uploading, setUploading] = useState(false);
+  const [taskOpen, setTaskOpen] = useState(false);
+  const current = lead.data;
+  const suggestedTask = current
+    ? {
+        new: {
+          title: `Research and contact ${current.business_name}`,
+          category: "follow_up",
+        },
+        contacted: {
+          title: `Schedule discovery call with ${current.business_name}`,
+          category: "meeting",
+        },
+        qualified: {
+          title: `Prepare proposal for ${current.business_name}`,
+          category: "proposal",
+        },
+        proposal: {
+          title: `Follow up on proposal with ${current.business_name}`,
+          category: "follow_up",
+        },
+        won: {
+          title: `Plan delivery kickoff for ${current.business_name}`,
+          category: "development",
+        },
+        lost: {
+          title: `Review lost opportunity: ${current.business_name}`,
+          category: "admin",
+        },
+      }[current.status]
+    : {};
+  const loadAttachments = useCallback(async () => {
+    const { data } = await supabase
+      .from("lead_attachments")
+      .select("*")
+      .eq("lead_id", id)
+      .order("created_at", { ascending: false });
+    setAttachments(data ?? []);
+  }, [id]);
+  useEffect(() => {
+    if (id) loadAttachments();
+  }, [id, loadAttachments]);
+  if (lead.isLoading)
+    return <div className="panel p-8 text-zinc-500">Opening opportunity…</div>;
+  if (!current)
+    return (
+      <div className="panel p-8 text-rose-500">
+        This opportunity is unavailable.
+      </div>
+    );
+  const update = async (changes) => {
+    try {
+      await updateLead(id, changes);
+      await lead.refetch();
+    } catch (e) {
+      alert(e.message);
+    }
+  };
+  const submitNote = async (event) => {
+    event.preventDefault();
+    if (!note.trim()) return;
+    try {
+      await addLeadNote({
+        leadId: id,
+        workspaceId: activeWorkspaceId,
+        authorId: user.id,
+        body: note.trim(),
+      });
+      setNote("");
+      await notes.refetch();
+    } catch (e) {
+      alert(e.message);
+    }
+  };
+  const whatsapp = async () => {
+    try {
+      await trackWhatsAppClick(id);
+    } finally {
+      window.open(
+        `https://wa.me/${current.phone.replace(/\D/g, "")}`,
+        "_blank",
+        "noopener,noreferrer",
+      );
+    }
+  };
+  const upload = async (event) => {
+    const file = event.target.files?.[0];
+    event.target.value = "";
+    if (!file) return;
+    if (
+      !["application/pdf", "image/jpeg", "image/png", "image/webp"].includes(
+        file.type,
+      ) ||
+      file.size > 10 * 1024 * 1024
+    )
+      return alert("Use a PDF, JPG, PNG, or WebP under 10 MB.");
+    setUploading(true);
+    const path = `${activeWorkspaceId}/${id}/${crypto.randomUUID()}-${file.name}`;
+    try {
+      const { error: fileError } = await supabase.storage
+        .from("lead-attachments")
+        .upload(path, file, { contentType: file.type });
+      if (fileError) throw fileError;
+      const { error: metadataError } = await supabase
+        .from("lead_attachments")
+        .insert({
+          lead_id: id,
+          workspace_id: activeWorkspaceId,
+          uploaded_by: user.id,
+          storage_path: path,
+          file_name: file.name,
+          mime_type: file.type,
+          size_bytes: file.size,
+        });
+      if (metadataError) throw metadataError;
+      await loadAttachments();
+    } catch (e) {
+      alert(e.message);
+    } finally {
+      setUploading(false);
+    }
+  };
+  const remove = async (file) => {
+    if (!window.confirm(`Delete ${file.file_name}?`)) return;
+    const { error } = await supabase
+      .from("lead_attachments")
+      .delete()
+      .eq("id", file.id);
+    if (error) return alert(error.message);
+    await supabase.storage.from("lead-attachments").remove([file.storage_path]);
+    await loadAttachments();
+  };
+  const download = async (file) => {
+    const { data, error } = await supabase.storage
+      .from("lead-attachments")
+      .createSignedUrl(file.storage_path, 60);
+    if (error) return alert(error.message);
+    window.open(data.signedUrl, "_blank", "noopener,noreferrer");
+  };
+  return (
+    <div className="mx-auto max-w-[1320px] space-y-5 pb-8">
+      <Link
+        to="/leads"
+        className="inline-flex items-center gap-2 text-sm font-bold text-zinc-500 hover:text-zinc-950"
+      >
+        <ArrowLeft size={16} /> Back to pipeline
+      </Link>
+      <section className="relative overflow-hidden rounded-[30px] bg-[#171719] p-6 text-white shadow-[0_20px_45px_rgba(50,35,105,.18)] sm:p-8">
+        <div className="absolute -right-10 -top-20 h-64 w-64 rounded-full bg-violet-500/70 blur-[70px]" />
+        <div className="relative flex flex-col gap-6 lg:flex-row lg:items-end">
+          <div className="min-w-0 flex-1">
+            <p className="text-[10px] font-extrabold uppercase tracking-[.18em] text-violet-200">
+              Opportunity profile
+            </p>
+            <h1 className="mt-3 truncate text-4xl font-extrabold tracking-[-.06em] sm:text-5xl">
+              {current.business_name}
+            </h1>
+            <p className="mt-3 text-sm text-zinc-300">
+              {[current.niche, current.area, current.company]
+                .filter(Boolean)
+                .join(" · ") || "A new opportunity"}
+            </p>
+          </div>
+          <div className="flex flex-wrap gap-2">
+            <button
+              onClick={() => setTaskOpen(true)}
+              className="inline-flex items-center gap-2 rounded-2xl border border-white/[.18] bg-white/[.1] px-4 py-2.5 text-sm font-extrabold"
+            >
+              <CheckSquare2 size={16} /> Add task
+            </button>
+            <select
+              value={current.status}
+              onChange={(e) => update({ status: e.target.value })}
+              className="rounded-2xl border border-white/[.15] bg-white/[.1] px-3 py-2.5 text-sm font-bold text-white outline-none"
+            >
+              <option className="text-zinc-900">{current.status}</option>
+              {PIPELINE_STATUSES.filter((s) => s !== current.status).map(
+                (status) => (
+                  <option className="text-zinc-900" key={status}>
+                    {status}
+                  </option>
+                ),
+              )}
+            </select>
+            {current.phone && (
+              <button
+                onClick={whatsapp}
+                className="inline-flex items-center gap-2 rounded-2xl bg-white px-4 py-2.5 text-sm font-extrabold text-zinc-950"
+              >
+                <MessageCircle size={16} /> WhatsApp
+              </button>
+            )}
+            <button
+              onClick={async () => {
+                if (window.confirm("Delete this opportunity?")) {
+                  await deleteLead(id);
+                  navigate("/leads");
+                }
+              }}
+              className="grid h-10 w-10 place-items-center rounded-2xl border border-white/[.15] text-rose-200 hover:bg-white/[.1]"
+            >
+              <Trash2 size={16} />
+            </button>
+          </div>
+        </div>
+      </section>
+      <div className="grid gap-5 lg:grid-cols-[1.15fr_.85fr]">
+        <main className="space-y-5">
+          <section className="panel p-5 sm:p-6">
+            <p className="eyebrow">Contact essentials</p>
+            <h2 className="mt-1 text-xl font-extrabold tracking-tight">
+              Everything in one quiet place.
+            </h2>
+            <div className="mt-6 grid gap-4 sm:grid-cols-2">
+              <Field
+                label="Email"
+                value={current.email}
+                onBlur={(value) => update({ email: value })}
+              />
+              <Field
+                label="Phone"
+                value={current.phone}
+                onBlur={(value) => update({ phone: value })}
+              />
+              <Field
+                label="Website"
+                value={current.website}
+                onBlur={(value) => update({ website: value })}
+              />
+              <Field
+                label="Source"
+                value={current.source}
+                onBlur={(value) => update({ source: value })}
+              />
+            </div>
+          </section>
+          <section className="panel p-5 sm:p-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="eyebrow">Files</p>
+                <h2 className="mt-1 text-xl font-extrabold">
+                  Shared attachments
+                </h2>
+              </div>
+              <label className="button-secondary cursor-pointer">
+                <Paperclip size={15} />
+                {uploading ? "Uploading…" : "Attach"}
+                <input
+                  type="file"
+                  disabled={uploading}
+                  accept="application/pdf,image/jpeg,image/png,image/webp"
+                  className="hidden"
+                  onChange={upload}
+                />
+              </label>
+            </div>
+            <div className="mt-5 space-y-2">
+              {attachments.map((file) => (
+                <div
+                  key={file.id}
+                  className="flex items-center gap-3 rounded-2xl border border-zinc-100 bg-white/55 p-3"
+                >
+                  <span className="grid h-9 w-9 place-items-center rounded-xl bg-violet-100 text-violet-600">
+                    <Link2 size={15} />
+                  </span>
+                  <span className="min-w-0 flex-1 truncate text-sm font-bold">
+                    {file.file_name}
+                  </span>
+                  <button
+                    onClick={() => download(file)}
+                    className="text-zinc-500 hover:text-violet-600"
+                  >
+                    <Download size={16} />
+                  </button>
+                  <button
+                    onClick={() => remove(file)}
+                    className="text-zinc-400 hover:text-rose-500"
+                  >
+                    <Trash2 size={16} />
+                  </button>
+                </div>
+              ))}
+              {!attachments.length && (
+                <p className="rounded-2xl border border-dashed border-zinc-200 p-6 text-center text-sm text-zinc-400">
+                  Nothing attached yet.
+                </p>
+              )}
+            </div>
+          </section>
+        </main>
+        <aside className="space-y-5">
+          <section className="panel p-5">
+            <p className="eyebrow">Ownership</p>
+            <h2 className="mt-1 text-lg font-extrabold">Keep it moving</h2>
+            <label className="mt-5 block text-xs font-bold uppercase tracking-[.12em] text-zinc-400">
+              Owner
+              <select
+                value={current.assigned_to ?? ""}
+                onChange={(e) =>
+                  update({ assigned_to: e.target.value || null })
+                }
+                className="control mt-2 w-full normal-case tracking-normal"
+              >
+                <option value="">Unassigned</option>
+                {(members.data ?? []).map((member) => (
+                  <option key={member.id} value={member.id}>
+                    {member.full_name || member.email}
+                  </option>
+                ))}
+              </select>
+            </label>
+          </section>
+          <section className="panel p-5">
+            <p className="eyebrow">Shared context</p>
+            <h2 className="mt-1 text-lg font-extrabold">Notes</h2>
+            <form onSubmit={submitNote} className="mt-4 flex gap-2">
+              <input
+                value={note}
+                onChange={(e) => setNote(e.target.value)}
+                placeholder="Leave an update"
+                className="control min-w-0 flex-1"
+              />
+              <button className="grid h-10 w-10 place-items-center rounded-2xl liquid-button text-white">
+                <Send size={15} />
+              </button>
+            </form>
+            <div className="mt-5 max-h-56 space-y-4 overflow-y-auto">
+              {(notes.data ?? []).map((item) => (
+                <div
+                  key={item.id}
+                  className="border-l-2 border-violet-300 pl-3"
+                >
+                  <p className="text-sm font-medium text-zinc-700">
+                    {item.body}
+                  </p>
+                  <p className="mt-1 text-[11px] text-zinc-400">
+                    {new Date(item.created_at).toLocaleString()}
+                  </p>
+                </div>
+              ))}
+              {!notes.data?.length && (
+                <p className="text-sm text-zinc-400">No updates yet.</p>
+              )}
+            </div>
+          </section>
+          <section className="panel p-5">
+            <p className="eyebrow">Signal trail</p>
+            <h2 className="mt-1 text-lg font-extrabold">Activity</h2>
+            <div className="mt-5 max-h-52 space-y-4 overflow-y-auto">
+              {(activity.data ?? []).map((item) => (
+                <div key={item.id} className="flex gap-3">
+                  <span className="mt-1.5 h-2 w-2 shrink-0 rounded-full bg-violet-400" />
+                  <div>
+                    <p className="text-sm font-bold capitalize text-zinc-700">
+                      {item.event_type.replace("_", " ")}
+                    </p>
+                    <p className="mt-1 text-[11px] text-zinc-400">
+                      {new Date(item.created_at).toLocaleString()}
+                    </p>
+                  </div>
+                </div>
+              ))}
+              {!activity.data?.length && (
+                <p className="text-sm text-zinc-400">No activity yet.</p>
+              )}
+            </div>
+          </section>
+        </aside>
+      </div>
+      <TaskModal
+        open={taskOpen}
+        onClose={() => setTaskOpen(false)}
+        onSave={taskApi.createTask}
+        members={taskApi.members}
+        defaultOwnerId={taskApi.currentUserId}
+        leads={[current]}
+        initialLeadId={id}
+        initialValues={suggestedTask}
+      />
+    </div>
+  );
 }
-function Field({ label, value, onBlur }) { const [draft, setDraft] = useState(value ?? ''); useEffect(() => setDraft(value ?? ''), [value]); return <label className="text-xs font-extrabold uppercase tracking-[.12em] text-zinc-400">{label}<input value={draft} onChange={(e) => setDraft(e.target.value)} onBlur={() => draft !== (value ?? '') && onBlur(draft)} className="control mt-2 w-full normal-case tracking-normal"/></label>; }
+function Field({ label, value, onBlur }) {
+  const [draft, setDraft] = useState(value ?? "");
+  useEffect(() => setDraft(value ?? ""), [value]);
+  return (
+    <label className="text-xs font-extrabold uppercase tracking-[.12em] text-zinc-400">
+      {label}
+      <input
+        value={draft}
+        onChange={(e) => setDraft(e.target.value)}
+        onBlur={() => draft !== (value ?? "") && onBlur(draft)}
+        className="control mt-2 w-full normal-case tracking-normal"
+      />
+    </label>
+  );
+}
