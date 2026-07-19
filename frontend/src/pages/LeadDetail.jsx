@@ -163,13 +163,25 @@ export default function LeadDetail() {
             <div>
               <div className="flex justify-between items-end mb-2">
                 <h3 className="text-xs font-semibold text-zinc-400 uppercase tracking-wider flex items-center gap-1"><MessageSquare size={14}/> Secondary: WhatsApp</h3>
-                <button 
-                  onClick={() => copyToClipboard(lead.templates?.whatsapp)}
-                  className="flex items-center text-xs font-medium text-blue-400 hover:text-blue-300 transition-colors bg-blue-500/10 px-3 py-1.5 rounded-md"
-                >
-                  {copied ? <Check size={14} className="mr-1" /> : <Copy size={14} className="mr-1" />}
-                  {copied ? 'Copied' : 'Copy'}
-                </button>
+                <div className="flex gap-2">
+                  <button 
+                    onClick={() => copyToClipboard(lead.templates?.whatsapp)}
+                    className="flex items-center text-xs font-medium text-blue-400 hover:text-blue-300 transition-colors bg-blue-500/10 px-3 py-1.5 rounded-md"
+                  >
+                    {copied ? <Check size={14} className="mr-1" /> : <Copy size={14} className="mr-1" />}
+                    Copy
+                  </button>
+                  {lead.phone && (
+                    <a 
+                      href={`https://wa.me/${lead.phone.replace(/\D/g, '')}?text=${encodeURIComponent(lead.templates?.whatsapp || '')}`}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="flex items-center text-xs font-medium text-emerald-400 hover:text-emerald-300 transition-colors bg-emerald-500/10 px-3 py-1.5 rounded-md"
+                    >
+                      Open in WhatsApp
+                    </a>
+                  )}
+                </div>
               </div>
               <div className="bg-zinc-900/50 border border-zinc-800/80 p-5 rounded-lg text-sm text-zinc-300 font-medium leading-relaxed whitespace-pre-wrap selection:bg-blue-900">
                 {lead.templates?.whatsapp}
