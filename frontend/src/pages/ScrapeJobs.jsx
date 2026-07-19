@@ -1,5 +1,6 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import axios from "axios";
+import { Link } from "react-router-dom";
 import {
   CheckCircle2,
   Clock,
@@ -8,8 +9,15 @@ import {
   Radar,
   XCircle,
 } from "lucide-react";
+import { useAuthWorkspace } from "../context/authWorkspace";
+import { supabase } from "../lib/supabase";
+
+const apiBase = import.meta.env.VITE_API_URL || "http://localhost:3001";
+const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+const supabaseKey = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
 
 export default function ScrapeJobs() {
+  const { activeWorkspaceId } = useAuthWorkspace();
   const [jobs, setJobs] = useState([]);
   const [form, setForm] = useState({
     query: "",
@@ -20,26 +28,70 @@ export default function ScrapeJobs() {
     headless: true,
   });
   const [sending, setSending] = useState(false);
-  const load = () =>
-    axios
-      .get("http://localhost:3001/api/scrape-jobs")
-      .then((r) => setJobs(r.data))
-      .catch(console.error);
+  const [error, setError] = useState("");
+  const requestConfig = useCallback(async () => {
+    const {
+      data: { session },
+    } = await supabase.auth.getSession();
+    if (!session) throw new Error("Sign in again to use the scraper.");
+    return {
+      headers: {
+        Authorization: `Bearer ${session.access_token}`,
+        "X-Supabase-Url": supabaseUrl,
+        "X-Supabase-Key": supabaseKey,
+      },
+      params: {
+        workspace_id: activeWorkspaceId,
+      },
+    };
+  }, [activeWorkspaceId]);
+  const load = useCallback(async () => {
+    if (!activeWorkspaceId) return;
+    try {
+      const config = await requestConfig();
+      const response = await axios.get(`${apiBase}/api/scrape-jobs`, config);
+      setJobs(response.data);
+      setError("");
+    } catch (loadError) {
+      setError(
+        loadError.response?.data?.error ||
+          loadError.message ||
+          "Could not load scraper jobs.",
+      );
+    }
+  }, [activeWorkspaceId, requestConfig]);
   useEffect(() => {
     load();
     const timer = setInterval(load, 5000);
     return () => clearInterval(timer);
-  }, []);
-  const submit = (e) => {
+  }, [load]);
+  const submit = async (e) => {
     e.preventDefault();
+    if (!form.query.trim() && !form.niche.trim())
+      return setError("Enter a search query or an industry and area.");
     setSending(true);
-    axios
-      .post("http://localhost:3001/api/scrape-jobs", form)
-      .then(() => {
-        setForm({ ...form, query: "", niche: "", area: "" });
-        load();
-      })
-      .finally(() => setSending(false));
+    setError("");
+    try {
+      const config = await requestConfig();
+      await axios.post(
+        `${apiBase}/api/scrape-jobs`,
+        {
+          ...form,
+          workspace_id: activeWorkspaceId,
+        },
+        { headers: config.headers },
+      );
+      setForm({ ...form, query: "", niche: "", area: "" });
+      await load();
+    } catch (submitError) {
+      setError(
+        submitError.response?.data?.error ||
+          submitError.message ||
+          "Could not launch this scan.",
+      );
+    } finally {
+      setSending(false);
+    }
   };
   return (
     <div className="mx-auto max-w-7xl space-y-5">
@@ -134,6 +186,14 @@ export default function ScrapeJobs() {
               )}
               {sending ? "Starting…" : "Launch scan"}
             </button>
+            {error && (
+              <p
+                role="alert"
+                className="rounded-2xl bg-rose-50 p-3 text-sm text-rose-600"
+              >
+                {error}
+              </p>
+            )}
           </div>
         </form>
         <section className="panel overflow-hidden">
@@ -188,6 +248,14 @@ export default function ScrapeJobs() {
                         >
                           {job.error_message}
                         </p>
+                      )}
+                      {job.status === "completed" && job.saved_count > 0 && (
+                        <Link
+                          to="/leads"
+                          className="mt-2 inline-flex text-[11px] font-extrabold text-violet-600"
+                        >
+                          View saved leads →
+                        </Link>
                       )}
                     </td>
                     <td className="px-5 py-4 text-xs text-zinc-400">

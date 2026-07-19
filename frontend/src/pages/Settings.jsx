@@ -9,7 +9,7 @@ import {
   Unplug,
 } from "lucide-react";
 import { supabase } from "../lib/supabase";
-import { useAuthWorkspace } from "../context/AuthWorkspaceContext";
+import { useAuthWorkspace } from "../context/authWorkspace";
 
 export default function Settings() {
   const { user, activeWorkspaceId } = useAuthWorkspace();

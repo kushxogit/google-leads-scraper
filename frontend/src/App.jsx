@@ -1,22 +1,29 @@
 ﻿import React from "react";
-import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
+import { lazy, Suspense } from "react";
+import {
+  BrowserRouter as Router,
+  Routes,
+  Route,
+  Navigate,
+  Link,
+} from "react-router-dom";
 import { PersistQueryClientProvider } from "@tanstack/react-query-persist-client";
 import Layout from "./components/Layout";
-import DashboardOverview from "./pages/DashboardOverview";
-import ScrapeJobs from "./pages/ScrapeJobs";
-import LeadsTable from "./pages/LeadsTable";
-import LeadDetail from "./pages/LeadDetail";
-import FollowUps from "./pages/FollowUps";
-import Tracker from "./pages/Tracker";
-import Rewind from "./pages/Rewind";
-import CalendarCallback from "./pages/CalendarCallback";
-import InviteAccept from "./pages/InviteAccept";
-import Settings from "./pages/Settings";
-import ResetPassword from "./pages/ResetPassword";
 import AuthGate from "./components/AuthGate";
 import { AuthWorkspaceProvider } from "./context/AuthWorkspaceContext";
 import { queryClient, queryPersister } from "./lib/queryClient";
 import { supabaseConfigError } from "./lib/supabase";
+import FeedbackProvider from "./components/FeedbackProvider";
+
+const DashboardOverview = lazy(() => import("./pages/DashboardOverview"));
+const ScrapeJobs = lazy(() => import("./pages/ScrapeJobs"));
+const LeadsTable = lazy(() => import("./pages/LeadsTable"));
+const LeadDetail = lazy(() => import("./pages/LeadDetail"));
+const Rewind = lazy(() => import("./pages/Rewind"));
+const CalendarCallback = lazy(() => import("./pages/CalendarCallback"));
+const InviteAccept = lazy(() => import("./pages/InviteAccept"));
+const Settings = lazy(() => import("./pages/Settings"));
+const ResetPassword = lazy(() => import("./pages/ResetPassword"));
 
 function App() {
   if (supabaseConfigError) {
@@ -46,24 +53,35 @@ function App() {
       <AuthWorkspaceProvider>
         <AuthGate>
           <Router>
-            <Layout>
-              <Routes>
-                <Route path="/invite" element={<InviteAccept />} />
-                <Route path="/reset-password" element={<ResetPassword />} />
-                <Route path="/" element={<DashboardOverview />} />
-                <Route path="/jobs" element={<ScrapeJobs />} />
-                <Route path="/leads" element={<LeadsTable />} />
-                <Route path="/leads/:id" element={<LeadDetail />} />
-                <Route path="/tracker" element={<Tracker />} />
-                <Route path="/rewind" element={<Rewind />} />
-                <Route
-                  path="/calendar/callback"
-                  element={<CalendarCallback />}
-                />
-                <Route path="/follow-ups" element={<FollowUps />} />
-                <Route path="/settings" element={<Settings />} />
-              </Routes>
-            </Layout>
+            <FeedbackProvider>
+              <Layout>
+                <Suspense fallback={<PageLoader />}>
+                  <Routes>
+                    <Route path="/invite" element={<InviteAccept />} />
+                    <Route path="/reset-password" element={<ResetPassword />} />
+                    <Route path="/" element={<DashboardOverview />} />
+                    <Route path="/jobs" element={<ScrapeJobs />} />
+                    <Route path="/leads" element={<LeadsTable />} />
+                    <Route path="/leads/:id" element={<LeadDetail />} />
+                    <Route
+                      path="/tracker"
+                      element={<Navigate to="/leads" replace />}
+                    />
+                    <Route path="/rewind" element={<Rewind />} />
+                    <Route
+                      path="/calendar/callback"
+                      element={<CalendarCallback />}
+                    />
+                    <Route
+                      path="/follow-ups"
+                      element={<Navigate to="/rewind" replace />}
+                    />
+                    <Route path="/settings" element={<Settings />} />
+                    <Route path="*" element={<NotFound />} />
+                  </Routes>
+                </Suspense>
+              </Layout>
+            </FeedbackProvider>
           </Router>
         </AuthGate>
       </AuthWorkspaceProvider>
@@ -72,3 +90,35 @@ function App() {
 }
 
 export default App;
+
+function PageLoader() {
+  return (
+    <div className="panel p-8 text-sm font-semibold text-zinc-500">
+      Opening workspace…
+    </div>
+  );
+}
+
+function NotFound() {
+  return (
+    <div className="mx-auto grid min-h-[60vh] max-w-xl place-items-center">
+      <section className="panel w-full p-8 text-center">
+        <p className="eyebrow">404 · Lost signal</p>
+        <h1 className="mt-2 text-3xl font-extrabold tracking-[-.05em]">
+          This page is not part of your workspace.
+        </h1>
+        <p className="mt-3 text-sm text-zinc-500">
+          Return to today’s work or open the pipeline.
+        </p>
+        <div className="mt-6 flex justify-center gap-2">
+          <Link to="/" className="button-primary">
+            Go home
+          </Link>
+          <Link to="/leads" className="button-secondary">
+            Open pipeline
+          </Link>
+        </div>
+      </section>
+    </div>
+  );
+}

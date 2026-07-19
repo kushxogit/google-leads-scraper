@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { Check, Sparkles } from "lucide-react";
 import { Link, useSearchParams } from "react-router-dom";
 import { supabase } from "../lib/supabase";
-import { useAuthWorkspace } from "../context/AuthWorkspaceContext";
+import { useAuthWorkspace } from "../context/authWorkspace";
 
 export default function InviteAccept() {
   const [params] = useSearchParams();

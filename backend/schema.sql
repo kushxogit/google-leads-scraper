@@ -37,6 +37,10 @@ CREATE TABLE IF NOT EXISTS scrape_jobs (
   source TEXT,
   lead_limit INTEGER DEFAULT 50,
   headless INTEGER DEFAULT 0,
+  workspace_id TEXT,
+  created_by TEXT,
+  supabase_url TEXT,
+  supabase_key TEXT,
 
   status TEXT DEFAULT 'queued',
 

@@ -1,16 +1,31 @@
-const Database = require('better-sqlite3');
-const path = require('path');
-const fs = require('fs');
+const Database = require("better-sqlite3");
+const path = require("path");
+const fs = require("fs");
 
-const dbPath = path.join(__dirname, 'data.db');
-const schemaPath = path.join(__dirname, 'schema.sql');
+const dbPath = path.join(__dirname, "data.db");
+const schemaPath = path.join(__dirname, "schema.sql");
 
 const db = new Database(dbPath);
 
 // Initialize schema
-const schema = fs.readFileSync(schemaPath, 'utf8');
+const schema = fs.readFileSync(schemaPath, "utf8");
 db.exec(schema);
 
-db.pragma('journal_mode = WAL');
+const jobColumns = new Set(
+  db
+    .prepare("PRAGMA table_info(scrape_jobs)")
+    .all()
+    .map((column) => column.name),
+);
+if (!jobColumns.has("workspace_id"))
+  db.exec("ALTER TABLE scrape_jobs ADD COLUMN workspace_id TEXT");
+if (!jobColumns.has("created_by"))
+  db.exec("ALTER TABLE scrape_jobs ADD COLUMN created_by TEXT");
+if (!jobColumns.has("supabase_url"))
+  db.exec("ALTER TABLE scrape_jobs ADD COLUMN supabase_url TEXT");
+if (!jobColumns.has("supabase_key"))
+  db.exec("ALTER TABLE scrape_jobs ADD COLUMN supabase_key TEXT");
+
+db.pragma("journal_mode = WAL");
 
 module.exports = db;

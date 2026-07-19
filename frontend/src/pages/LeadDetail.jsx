@@ -1,7 +1,11 @@
 import { useCallback, useEffect, useState } from "react";
 import {
   ArrowLeft,
+  CalendarClock,
+  CheckCircle2,
   CheckSquare2,
+  ChevronRight,
+  Circle,
   Download,
   Link2,
   MessageCircle,
@@ -18,9 +22,10 @@ import {
   useLeadDetail,
   useWorkspaceLeads,
 } from "../hooks/useCrm";
-import { useAuthWorkspace } from "../context/AuthWorkspaceContext";
+import { useAuthWorkspace } from "../context/authWorkspace";
 import TaskModal from "../components/TaskModal";
-import { useWorkspaceTasks } from "../hooks/useTasks";
+import { TASK_CATEGORIES, useWorkspaceTasks } from "../hooks/useTasks";
+import { useFeedback } from "../context/feedback";
 
 export default function LeadDetail() {
   const { id } = useParams();
@@ -29,11 +34,22 @@ export default function LeadDetail() {
   const { lead, notes, activity, members } = useLeadDetail(id);
   const { updateLead, deleteLead } = useWorkspaceLeads();
   const taskApi = useWorkspaceTasks();
+  const { notify, confirm } = useFeedback();
   const [note, setNote] = useState("");
   const [attachments, setAttachments] = useState([]);
   const [uploading, setUploading] = useState(false);
   const [taskOpen, setTaskOpen] = useState(false);
+  const [taskEditing, setTaskEditing] = useState(null);
+  const [showCompletedTasks, setShowCompletedTasks] = useState(false);
   const current = lead.data;
+  const leadTasks = taskApi.tasks.filter((task) => task.lead_id === id);
+  const openLeadTasks = leadTasks
+    .filter((task) => !["done", "cancelled"].includes(task.status))
+    .sort(taskOrder);
+  const completedLeadTasks = leadTasks
+    .filter((task) => task.status === "done")
+    .sort(taskOrder);
+  const nextTask = openLeadTasks[0];
   const suggestedTask = current
     ? {
         new: {
@@ -86,9 +102,21 @@ export default function LeadDetail() {
       await updateLead(id, changes);
       await lead.refetch();
     } catch (e) {
-      alert(e.message);
+      notify(e.message, "error");
     }
   };
+  const openNewTask = () => {
+    setTaskEditing(null);
+    setTaskOpen(true);
+  };
+  const openTaskEditor = (task) => {
+    setTaskEditing(task);
+    setTaskOpen(true);
+  };
+  const saveTask = (values) =>
+    taskEditing
+      ? taskApi.updateTask(taskEditing.id, values)
+      : taskApi.createTask(values);
   const submitNote = async (event) => {
     event.preventDefault();
     if (!note.trim()) return;
@@ -102,7 +130,7 @@ export default function LeadDetail() {
       setNote("");
       await notes.refetch();
     } catch (e) {
-      alert(e.message);
+      notify(e.message, "error");
     }
   };
   const whatsapp = async () => {
@@ -126,7 +154,7 @@ export default function LeadDetail() {
       ) ||
       file.size > 10 * 1024 * 1024
     )
-      return alert("Use a PDF, JPG, PNG, or WebP under 10 MB.");
+      return notify("Use a PDF, JPG, PNG, or WebP under 10 MB.", "error");
     setUploading(true);
     const path = `${activeWorkspaceId}/${id}/${crypto.randomUUID()}-${file.name}`;
     try {
@@ -148,18 +176,26 @@ export default function LeadDetail() {
       if (metadataError) throw metadataError;
       await loadAttachments();
     } catch (e) {
-      alert(e.message);
+      notify(e.message, "error");
     } finally {
       setUploading(false);
     }
   };
   const remove = async (file) => {
-    if (!window.confirm(`Delete ${file.file_name}?`)) return;
+    if (
+      !(await confirm({
+        title: "Delete this attachment?",
+        description: file.file_name,
+        confirmLabel: "Delete file",
+        danger: true,
+      }))
+    )
+      return;
     const { error } = await supabase
       .from("lead_attachments")
       .delete()
       .eq("id", file.id);
-    if (error) return alert(error.message);
+    if (error) return notify(error.message, "error");
     await supabase.storage.from("lead-attachments").remove([file.storage_path]);
     await loadAttachments();
   };
@@ -167,7 +203,7 @@ export default function LeadDetail() {
     const { data, error } = await supabase.storage
       .from("lead-attachments")
       .createSignedUrl(file.storage_path, 60);
-    if (error) return alert(error.message);
+    if (error) return notify(error.message, "error");
     window.open(data.signedUrl, "_blank", "noopener,noreferrer");
   };
   return (
@@ -196,7 +232,7 @@ export default function LeadDetail() {
           </div>
           <div className="flex flex-wrap gap-2">
             <button
-              onClick={() => setTaskOpen(true)}
+              onClick={openNewTask}
               className="inline-flex items-center gap-2 rounded-2xl border border-white/[.18] bg-white/[.1] px-4 py-2.5 text-sm font-extrabold"
             >
               <CheckSquare2 size={16} /> Add task
@@ -225,7 +261,15 @@ export default function LeadDetail() {
             )}
             <button
               onClick={async () => {
-                if (window.confirm("Delete this opportunity?")) {
+                if (
+                  await confirm({
+                    title: "Delete this opportunity?",
+                    description:
+                      "Its notes, tasks, attachments, and activity will also be removed.",
+                    confirmLabel: "Delete opportunity",
+                    danger: true,
+                  })
+                ) {
                   await deleteLead(id);
                   navigate("/leads");
                 }
@@ -266,6 +310,107 @@ export default function LeadDetail() {
                 onBlur={(value) => update({ source: value })}
               />
             </div>
+          </section>
+          <section className="panel p-5 sm:p-6">
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+              <div>
+                <p className="eyebrow">Connected work</p>
+                <h2 className="mt-1 text-xl font-extrabold tracking-tight">
+                  Tasks and next actions
+                </h2>
+                <p className="mt-2 text-sm text-zinc-500">
+                  Everything planned for this opportunity, in one place.
+                </p>
+              </div>
+              <button onClick={openNewTask} className="button-primary shrink-0">
+                <CheckSquare2 size={16} /> Add task
+              </button>
+            </div>
+            {nextTask && (
+              <Link
+                to={`/rewind?task=${nextTask.id}`}
+                className="mt-5 flex items-center gap-3 rounded-2xl border border-violet-100 bg-gradient-to-r from-violet-50 to-fuchsia-50 p-4 transition hover:border-violet-200"
+              >
+                <span
+                  className={`h-3 w-3 shrink-0 rounded-full ${TASK_CATEGORIES[nextTask.category]?.dot}`}
+                />
+                <div className="min-w-0 flex-1">
+                  <p className="text-[10px] font-extrabold uppercase tracking-[.13em] text-violet-500">
+                    Next action
+                  </p>
+                  <p className="mt-1 truncate text-sm font-extrabold text-zinc-900">
+                    {nextTask.title}
+                  </p>
+                  <p className="mt-1 text-xs text-zinc-500">
+                    {taskTiming(nextTask)}
+                  </p>
+                </div>
+                <ChevronRight size={17} className="text-violet-400" />
+              </Link>
+            )}
+            <div className="mt-5 space-y-2">
+              {openLeadTasks.map((task) => (
+                <LeadTaskRow
+                  key={task.id}
+                  task={task}
+                  members={taskApi.members}
+                  onComplete={() =>
+                    taskApi.updateTask(task.id, { status: "done" })
+                  }
+                  onEdit={() => openTaskEditor(task)}
+                />
+              ))}
+              {!openLeadTasks.length && (
+                <div className="rounded-2xl border border-dashed border-zinc-200 p-7 text-center">
+                  <CheckCircle2
+                    className="mx-auto text-emerald-500"
+                    size={22}
+                  />
+                  <p className="mt-3 text-sm font-extrabold">
+                    No open work for this lead.
+                  </p>
+                  <button
+                    onClick={openNewTask}
+                    className="mt-2 text-xs font-bold text-violet-600"
+                  >
+                    Create the suggested next action
+                  </button>
+                </div>
+              )}
+            </div>
+            {completedLeadTasks.length > 0 && (
+              <div className="mt-4 border-t border-zinc-100 pt-4">
+                <button
+                  onClick={() => setShowCompletedTasks(!showCompletedTasks)}
+                  className="flex w-full items-center justify-between text-xs font-extrabold text-zinc-500"
+                >
+                  <span>
+                    {completedLeadTasks.length} completed task
+                    {completedLeadTasks.length === 1 ? "" : "s"}
+                  </span>
+                  <ChevronRight
+                    size={15}
+                    className={`transition ${showCompletedTasks ? "rotate-90" : ""}`}
+                  />
+                </button>
+                {showCompletedTasks && (
+                  <div className="mt-3 space-y-2">
+                    {completedLeadTasks.map((task) => (
+                      <LeadTaskRow
+                        key={task.id}
+                        task={task}
+                        members={taskApi.members}
+                        completed
+                        onComplete={() =>
+                          taskApi.updateTask(task.id, { status: "planned" })
+                        }
+                        onEdit={() => openTaskEditor(task)}
+                      />
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
           </section>
           <section className="panel p-5 sm:p-6">
             <div className="flex items-center justify-between">
@@ -402,16 +547,98 @@ export default function LeadDetail() {
       </div>
       <TaskModal
         open={taskOpen}
-        onClose={() => setTaskOpen(false)}
-        onSave={taskApi.createTask}
+        onClose={() => {
+          setTaskOpen(false);
+          setTaskEditing(null);
+        }}
+        onSave={saveTask}
         members={taskApi.members}
         defaultOwnerId={taskApi.currentUserId}
         leads={[current]}
         initialLeadId={id}
         initialValues={suggestedTask}
+        task={taskEditing}
       />
     </div>
   );
+}
+function LeadTaskRow({ task, members, completed, onComplete, onEdit }) {
+  const category =
+    TASK_CATEGORIES[task.category] ?? TASK_CATEGORIES.development;
+  const owners = task.assignee_ids
+    .map((id) => members.find((member) => member.id === id))
+    .filter(Boolean);
+  return (
+    <div
+      className={`group flex items-center gap-3 rounded-2xl border p-3 ${completed ? "border-zinc-100 bg-zinc-50/60 opacity-70" : "border-zinc-100 bg-white/70"}`}
+    >
+      <button
+        onClick={onComplete}
+        aria-label={
+          completed ? `Reopen ${task.title}` : `Complete ${task.title}`
+        }
+        className={
+          completed
+            ? "text-emerald-500"
+            : "text-zinc-300 hover:text-emerald-500"
+        }
+      >
+        {completed ? <CheckCircle2 size={20} /> : <Circle size={20} />}
+      </button>
+      <button onClick={onEdit} className="min-w-0 flex-1 text-left">
+        <div className="flex items-center gap-2">
+          <span className={`h-2 w-2 rounded-full ${category.dot}`} />
+          <span className="text-[9px] font-extrabold uppercase tracking-[.12em] text-zinc-400">
+            {category.label}
+          </span>
+        </div>
+        <p
+          className={`mt-1 truncate text-sm font-extrabold ${completed ? "line-through text-zinc-500" : "text-zinc-800"}`}
+        >
+          {task.title}
+        </p>
+        <p className="mt-1 flex items-center gap-1 text-[11px] text-zinc-400">
+          <CalendarClock size={12} />
+          {taskTiming(task)}
+        </p>
+      </button>
+      <div className="flex -space-x-1">
+        {owners.map((owner) => (
+          <span
+            key={owner.id}
+            title={owner.full_name || owner.email}
+            className="grid h-7 w-7 place-items-center rounded-full border-2 border-white bg-violet-100 text-[9px] font-extrabold text-violet-700"
+          >
+            {(owner.full_name || owner.email)[0].toUpperCase()}
+          </span>
+        ))}
+      </div>
+      <Link
+        to={`/rewind?task=${task.id}`}
+        aria-label={`Open ${task.title} in Rewind`}
+        className="grid h-8 w-8 place-items-center rounded-xl text-zinc-300 hover:bg-violet-50 hover:text-violet-600"
+      >
+        <ChevronRight size={16} />
+      </Link>
+    </div>
+  );
+}
+function taskTiming(task) {
+  if (task.scheduled_start)
+    return new Date(task.scheduled_start).toLocaleString([], {
+      month: "short",
+      day: "numeric",
+      hour: "numeric",
+      minute: "2-digit",
+    });
+  if (task.due_at)
+    return `Due ${new Date(task.due_at).toLocaleString([], { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" })}`;
+  return "Unplanned";
+}
+function taskOrder(a, b) {
+  const aTime = a.scheduled_start || a.due_at || "9999";
+  const bTime = b.scheduled_start || b.due_at || "9999";
+  return String(aTime).localeCompare(String(bTime));
 }
 function Field({ label, value, onBlur }) {
   const [draft, setDraft] = useState(value ?? "");

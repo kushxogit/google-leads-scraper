@@ -1,14 +1,8 @@
-import {
-  createContext,
-  useCallback,
-  useContext,
-  useEffect,
-  useMemo,
-  useState,
-} from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { supabase } from "../lib/supabase";
+import { queryClient, queryPersister } from "../lib/queryClient";
+import { AuthWorkspaceContext } from "./authWorkspace";
 
-const Context = createContext(null);
 const storageKey = (id) => `leadpilot.active-workspace.${id}`;
 
 export function AuthWorkspaceProvider({ children }) {
@@ -126,7 +120,12 @@ export function AuthWorkspaceProvider({ children }) {
       selectWorkspace,
       createTeamWorkspace,
       refreshWorkspaces,
-      signOut: () => supabase.auth.signOut(),
+      signOut: async () => {
+        const { error: signOutError } = await supabase.auth.signOut();
+        if (signOutError) throw signOutError;
+        queryClient.clear();
+        await queryPersister.removeClient();
+      },
     }),
     [
       activeWorkspaceId,
@@ -139,11 +138,9 @@ export function AuthWorkspaceProvider({ children }) {
       workspaces,
     ],
   );
-  return <Context.Provider value={value}>{children}</Context.Provider>;
-}
-
-export function useAuthWorkspace() {
-  const value = useContext(Context);
-  if (!value) throw new Error("Auth workspace context is missing.");
-  return value;
+  return (
+    <AuthWorkspaceContext.Provider value={value}>
+      {children}
+    </AuthWorkspaceContext.Provider>
+  );
 }

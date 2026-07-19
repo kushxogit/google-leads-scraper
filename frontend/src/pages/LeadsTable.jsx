@@ -1,7 +1,9 @@
-import { useMemo, useState } from "react";
-import { Link } from "react-router-dom";
+import { useEffect, useMemo, useState } from "react";
+import { Link, useSearchParams } from "react-router-dom";
 import {
   Filter,
+  CalendarClock,
+  CheckSquare2,
   MapPin,
   MessageCircle,
   Plus,
@@ -12,6 +14,9 @@ import {
 } from "lucide-react";
 import AddLeadModal from "../components/AddLeadModal";
 import CsvImportModal from "../components/CsvImportModal";
+import TaskModal from "../components/TaskModal";
+import { TASK_CATEGORIES, useWorkspaceTasks } from "../hooks/useTasks";
+import { useFeedback } from "../context/feedback";
 import {
   PIPELINE_STATUSES,
   useWorkspaceLeads,
@@ -36,22 +41,64 @@ const colors = {
 };
 
 export default function LeadsTable() {
+  const [searchParams, setSearchParams] = useSearchParams();
   const { leads, isLoading, error, updateLead, bulkUpdate, addLead } =
     useWorkspaceLeads();
   const members = useWorkspaceMembers();
+  const taskApi = useWorkspaceTasks();
+  const { notify, confirm } = useFeedback();
   const [addOpen, setAddOpen] = useState(false);
   const [importOpen, setImportOpen] = useState(false);
   const [search, setSearch] = useState("");
+  const [filtersOpen, setFiltersOpen] = useState(false);
+  const [ownerFilter, setOwnerFilter] = useState("all");
+  const [workFilter, setWorkFilter] = useState("all");
   const [selected, setSelected] = useState([]);
   const [busy, setBusy] = useState(false);
+  const [taskLead, setTaskLead] = useState(null);
+  useEffect(() => {
+    if (searchParams.get("new") === "1") {
+      setAddOpen(true);
+      setSearchParams(
+        (current) => {
+          const next = new URLSearchParams(current);
+          next.delete("new");
+          return next;
+        },
+        { replace: true },
+      );
+    }
+  }, [searchParams, setSearchParams]);
   const visible = useMemo(
     () =>
-      leads.filter((lead) =>
-        `${lead.business_name} ${lead.niche ?? ""} ${lead.area ?? ""}`
-          .toLowerCase()
-          .includes(search.toLowerCase()),
-      ),
-    [leads, search],
+      leads.filter((lead) => {
+        const matchesSearch =
+          `${lead.business_name} ${lead.phone ?? ""} ${lead.email ?? ""} ${lead.niche ?? ""} ${lead.area ?? ""} ${lead.remarks ?? ""}`
+            .toLowerCase()
+            .includes(search.toLowerCase());
+        const matchesOwner =
+          ownerFilter === "all" ||
+          (ownerFilter === "unassigned"
+            ? !lead.assigned_to
+            : lead.assigned_to === ownerFilter);
+        const related = taskApi.tasks.filter(
+          (task) =>
+            task.lead_id === lead.id &&
+            !["done", "cancelled"].includes(task.status),
+        );
+        const dates = related
+          .map((task) => task.scheduled_start || task.due_at)
+          .filter(Boolean);
+        const matchesWork =
+          workFilter === "all" ||
+          (workFilter === "none" && !related.length) ||
+          (workFilter === "overdue" &&
+            dates.some((date) => new Date(date) < new Date())) ||
+          (workFilter === "planned" &&
+            related.some((task) => task.scheduled_start));
+        return matchesSearch && matchesOwner && matchesWork;
+      }),
+    [leads, ownerFilter, search, taskApi.tasks, workFilter],
   );
   const toggle = (id) =>
     setSelected((ids) =>
@@ -61,7 +108,12 @@ export default function LeadsTable() {
     if (
       !selected.length ||
       (action.remove &&
-        !window.confirm(`Delete ${selected.length} selected lead(s)?`))
+        !(await confirm({
+          title: `Delete ${selected.length} selected lead${selected.length === 1 ? "" : "s"}?`,
+          description: "Linked notes, tasks, and files will also be removed.",
+          confirmLabel: "Delete selected",
+          danger: true,
+        })))
     )
       return;
     setBusy(true);
@@ -69,7 +121,7 @@ export default function LeadsTable() {
       await bulkUpdate({ ids: selected, ...action });
       setSelected([]);
     } catch (e) {
-      alert(e.message);
+      notify(e.message, "error");
     } finally {
       setBusy(false);
     }
@@ -106,8 +158,13 @@ export default function LeadsTable() {
               className="w-full bg-transparent outline-none"
             />
           </label>
-          <button className="button-secondary px-3" title="Filters">
+          <button
+            onClick={() => setFiltersOpen(!filtersOpen)}
+            className={`button-secondary px-3 ${filtersOpen || ownerFilter !== "all" || workFilter !== "all" ? "border-violet-300 text-violet-700" : ""}`}
+            title="Filters"
+          >
             <Filter size={17} />
+            <span className="sr-only">Filters</span>
           </button>
           <button
             onClick={() => setImportOpen(true)}
@@ -123,6 +180,51 @@ export default function LeadsTable() {
           </button>
         </div>
       </header>
+      {filtersOpen && (
+        <section className="panel flex flex-wrap items-end gap-3 p-4">
+          <label className="text-[10px] font-extrabold uppercase tracking-[.12em] text-zinc-400">
+            Owner
+            <select
+              value={ownerFilter}
+              onChange={(event) => setOwnerFilter(event.target.value)}
+              className="control mt-1 block min-w-44 normal-case tracking-normal"
+            >
+              <option value="all">Everyone</option>
+              <option value="unassigned">Unassigned</option>
+              {taskApi.members.map((member) => (
+                <option key={member.id} value={member.id}>
+                  {member.full_name || member.email}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label className="text-[10px] font-extrabold uppercase tracking-[.12em] text-zinc-400">
+            Next action
+            <select
+              value={workFilter}
+              onChange={(event) => setWorkFilter(event.target.value)}
+              className="control mt-1 block min-w-44 normal-case tracking-normal"
+            >
+              <option value="all">All work states</option>
+              <option value="none">No next action</option>
+              <option value="overdue">Overdue</option>
+              <option value="planned">Scheduled</option>
+            </select>
+          </label>
+          <p className="pb-2 text-xs font-bold text-zinc-400">
+            Showing {visible.length} of {leads.length} opportunities
+          </p>
+          <button
+            onClick={() => {
+              setOwnerFilter("all");
+              setWorkFilter("all");
+            }}
+            className="ml-auto pb-2 text-xs font-bold text-violet-600"
+          >
+            Clear filters
+          </button>
+        </section>
+      )}
       {selected.length > 0 && (
         <section className="flex flex-wrap items-center gap-3 rounded-3xl border border-violet-200 bg-white/75 px-4 py-3 shadow-[0_12px_30px_rgba(91,65,150,.10)] backdrop-blur-xl">
           <span className="grid h-8 min-w-8 place-items-center rounded-2xl bg-violet-600 px-2 text-xs font-bold text-white">
@@ -181,6 +283,9 @@ export default function LeadsTable() {
             selected={selected}
             onToggle={toggle}
             onDrop={(id) => updateLead(id, { status })}
+            tasks={taskApi.tasks}
+            members={taskApi.members}
+            onAddTask={setTaskLead}
           />
         ))}
       </section>
@@ -191,10 +296,29 @@ export default function LeadsTable() {
         addLead={addLead}
         existingLeads={leads}
       />
+      <TaskModal
+        open={Boolean(taskLead)}
+        onClose={() => setTaskLead(null)}
+        onSave={taskApi.createTask}
+        members={taskApi.members}
+        defaultOwnerId={taskApi.currentUserId}
+        leads={taskLead ? [taskLead] : []}
+        initialLeadId={taskLead?.id || ""}
+        initialValues={taskLead ? taskSuggestion(taskLead) : undefined}
+      />
     </div>
   );
 }
-function Column({ status, leads, selected, onToggle, onDrop }) {
+function Column({
+  status,
+  leads,
+  selected,
+  onToggle,
+  onDrop,
+  tasks,
+  members,
+  onAddTask,
+}) {
   return (
     <section
       className="flex w-[290px] shrink-0 flex-col rounded-[26px] border border-white/80 bg-white/45 p-2.5 shadow-[0_10px_35px_rgba(55,45,85,.07)] backdrop-blur-md"
@@ -224,6 +348,9 @@ function Column({ status, leads, selected, onToggle, onDrop }) {
             lead={lead}
             checked={selected.includes(lead.id)}
             onToggle={() => onToggle(lead.id)}
+            tasks={tasks.filter((task) => task.lead_id === lead.id)}
+            members={members}
+            onAddTask={() => onAddTask(lead)}
           />
         ))}
         {!leads.length && (
@@ -235,8 +362,19 @@ function Column({ status, leads, selected, onToggle, onDrop }) {
     </section>
   );
 }
-function LeadCard({ lead, checked, onToggle }) {
+function LeadCard({ lead, checked, onToggle, tasks, members, onAddTask }) {
   const score = lead.score || 0;
+  const openTasks = tasks.filter(
+    (task) => !["done", "cancelled"].includes(task.status),
+  );
+  const nextTask = [...openTasks].sort((a, b) =>
+    String(a.scheduled_start || a.due_at || "9999").localeCompare(
+      String(b.scheduled_start || b.due_at || "9999"),
+    ),
+  )[0];
+  const nextDate = nextTask?.scheduled_start || nextTask?.due_at;
+  const overdue = nextDate && new Date(nextDate) < new Date();
+  const owner = members.find((member) => member.id === lead.assigned_to);
   return (
     <article
       draggable
@@ -268,6 +406,50 @@ function LeadCard({ lead, checked, onToggle }) {
           </span>
         )}
       </div>
+      <div className="mt-3 rounded-xl border border-zinc-100 bg-zinc-50/70 p-2.5">
+        {nextTask ? (
+          <Link
+            to={`/rewind?task=${nextTask.id}`}
+            className="flex items-center gap-2"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <span
+              className={`h-2 w-2 shrink-0 rounded-full ${TASK_CATEGORIES[nextTask.category]?.dot || "bg-violet-400"}`}
+            />
+            <span className="min-w-0 flex-1">
+              <span className="block truncate text-[11px] font-extrabold text-zinc-700">
+                {nextTask.title}
+              </span>
+              <span
+                className={`mt-0.5 flex items-center gap-1 text-[9px] font-bold ${overdue ? "text-rose-500" : "text-zinc-400"}`}
+              >
+                <CalendarClock size={10} />
+                {nextDate
+                  ? new Date(nextDate).toLocaleString([], {
+                      month: "short",
+                      day: "numeric",
+                      hour: "numeric",
+                      minute: "2-digit",
+                    })
+                  : "Unplanned"}
+              </span>
+            </span>
+            <span className="rounded-lg bg-white px-1.5 py-1 text-[9px] font-bold text-zinc-400">
+              {openTasks.length}
+            </span>
+          </Link>
+        ) : (
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              onAddTask();
+            }}
+            className="flex w-full items-center gap-2 text-[11px] font-bold text-violet-600"
+          >
+            <CheckSquare2 size={13} /> Add the next action
+          </button>
+        )}
+      </div>
       <div className="mt-3 flex items-center gap-3 border-t border-zinc-100 pt-3 pl-5 text-xs text-zinc-400">
         {lead.area && (
           <span className="flex min-w-0 items-center gap-1 truncate">
@@ -279,7 +461,7 @@ function LeadCard({ lead, checked, onToggle }) {
           {lead.assigned_to ? (
             <>
               <Users size={13} />
-              Assigned
+              {owner?.full_name || owner?.email || "Assigned"}
             </>
           ) : (
             "Unassigned"
@@ -299,4 +481,32 @@ function LeadCard({ lead, checked, onToggle }) {
       </div>
     </article>
   );
+}
+function taskSuggestion(lead) {
+  return {
+    new: {
+      title: `Research and contact ${lead.business_name}`,
+      category: "follow_up",
+    },
+    contacted: {
+      title: `Schedule discovery call with ${lead.business_name}`,
+      category: "meeting",
+    },
+    qualified: {
+      title: `Prepare proposal for ${lead.business_name}`,
+      category: "proposal",
+    },
+    proposal: {
+      title: `Follow up on proposal with ${lead.business_name}`,
+      category: "follow_up",
+    },
+    won: {
+      title: `Plan delivery kickoff for ${lead.business_name}`,
+      category: "development",
+    },
+    lost: {
+      title: `Review lost opportunity: ${lead.business_name}`,
+      category: "admin",
+    },
+  }[lead.status];
 }

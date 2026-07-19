@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { CalendarClock, Check, Link2, Users, X } from "lucide-react";
 import { TASK_CATEGORIES } from "../hooks/useTasks";
+import { useFeedback } from "../context/feedback";
 
 const empty = {
   title: "",
@@ -29,6 +30,7 @@ export default function TaskModal({
   const [form, setForm] = useState(empty);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
+  const { notify } = useFeedback();
   useEffect(() => {
     if (!open) return;
     setForm(
@@ -63,6 +65,12 @@ export default function TaskModal({
     open,
     task,
   ]);
+  useEffect(() => {
+    if (!open) return undefined;
+    const close = (event) => event.key === "Escape" && onClose();
+    window.addEventListener("keydown", close);
+    return () => window.removeEventListener("keydown", close);
+  }, [onClose, open]);
   if (!open) return null;
   const set = (key, value) =>
     setForm((current) => ({ ...current, [key]: value }));
@@ -92,6 +100,7 @@ export default function TaskModal({
         scheduled_start: iso(form.scheduled_start),
         scheduled_end: iso(form.scheduled_end),
       });
+      notify(task ? "Task updated." : "Task added to Rewind.");
       onClose();
     } catch (e) {
       setError(e.message);
@@ -100,21 +109,32 @@ export default function TaskModal({
     }
   };
   return (
-    <div className="fixed inset-0 z-[80] grid place-items-center bg-zinc-950/35 p-4 backdrop-blur-sm">
+    <div
+      className="fixed inset-0 z-[80] grid place-items-center bg-zinc-950/35 p-4 backdrop-blur-sm"
+      onMouseDown={onClose}
+    >
       <form
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="task-modal-title"
         onSubmit={submit}
+        onMouseDown={(event) => event.stopPropagation()}
         className="panel max-h-[92vh] w-full max-w-2xl overflow-y-auto bg-white p-5 sm:p-7"
       >
         <header className="flex items-start justify-between">
           <div>
             <p className="eyebrow">Shared work</p>
-            <h2 className="mt-1 text-2xl font-extrabold tracking-[-.04em]">
+            <h2
+              id="task-modal-title"
+              className="mt-1 text-2xl font-extrabold tracking-[-.04em]"
+            >
               {task ? "Edit task" : "Plan the next move"}
             </h2>
           </div>
           <button
             type="button"
             onClick={onClose}
+            aria-label="Close task editor"
             className="grid h-9 w-9 place-items-center rounded-xl bg-zinc-100 text-zinc-500"
           >
             <X size={17} />

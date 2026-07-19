@@ -1,7 +1,8 @@
 import { useState } from "react";
 import { Building2, ChevronDown, Link2, Plus, UserRound } from "lucide-react";
-import { useAuthWorkspace } from "../context/AuthWorkspaceContext";
+import { useAuthWorkspace } from "../context/authWorkspace";
 import { supabase } from "../lib/supabase";
+import { useFeedback } from "../context/feedback";
 
 export default function WorkspaceSwitcher() {
   const { activeWorkspace, workspaces, selectWorkspace, createTeamWorkspace } =
@@ -10,6 +11,10 @@ export default function WorkspaceSwitcher() {
   const [creating, setCreating] = useState(false);
   const [name, setName] = useState("");
   const [error, setError] = useState("");
+  const [inviteOpen, setInviteOpen] = useState(false);
+  const [inviteEmail, setInviteEmail] = useState("");
+  const [inviting, setInviting] = useState(false);
+  const { notify } = useFeedback();
   const Icon = activeWorkspace?.type === "team" ? Building2 : UserRound;
   const submit = async (e) => {
     e.preventDefault();
@@ -22,18 +27,26 @@ export default function WorkspaceSwitcher() {
       setError(err.message);
     }
   };
-  const invite = async () => {
-    const email = window.prompt("Email address to invite");
-    if (!email) return;
+  const invite = async (event) => {
+    event.preventDefault();
+    if (!inviteEmail.trim()) return;
+    setInviting(true);
+    setError("");
     const { data, error: inviteError } = await supabase.rpc(
       "create_workspace_invite",
-      { p_workspace_id: activeWorkspace.id, p_email: email },
+      { p_workspace_id: activeWorkspace.id, p_email: inviteEmail.trim() },
     );
-    if (inviteError) return setError(inviteError.message);
+    if (inviteError) {
+      setInviting(false);
+      return setError(inviteError.message);
+    }
     await navigator.clipboard.writeText(
       `${window.location.origin}/invite?token=${data}`,
     );
-    alert("Invite link copied.");
+    setInviting(false);
+    setInviteEmail("");
+    setInviteOpen(false);
+    notify("Invitation link copied. Send it to your partner.");
   };
   return (
     <div className="relative px-1 pb-3">
@@ -107,11 +120,45 @@ export default function WorkspaceSwitcher() {
               </div>
               {activeWorkspace?.type === "team" && (
                 <button
-                  onClick={invite}
+                  onClick={() => setInviteOpen(!inviteOpen)}
                   className="mt-1 flex w-full items-center gap-2 border-t border-white/[.08] px-3 pt-3 text-sm font-semibold text-violet-200"
                 >
                   <Link2 size={15} /> Copy invite link
                 </button>
+              )}
+              {inviteOpen && (
+                <form
+                  onSubmit={invite}
+                  className="mt-2 space-y-2 rounded-xl bg-black/20 p-2"
+                >
+                  <label className="block text-[10px] font-bold uppercase tracking-[.12em] text-zinc-500">
+                    Partner email
+                    <input
+                      autoFocus
+                      required
+                      type="email"
+                      value={inviteEmail}
+                      onChange={(event) => setInviteEmail(event.target.value)}
+                      placeholder="partner@agency.com"
+                      className="mt-1 w-full rounded-xl border border-white/[.1] bg-black/30 px-3 py-2 text-sm text-white outline-none"
+                    />
+                  </label>
+                  <div className="flex justify-end gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setInviteOpen(false)}
+                      className="px-2 py-1.5 text-xs text-zinc-400"
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      disabled={inviting}
+                      className="rounded-xl bg-white px-3 py-1.5 text-xs font-bold text-zinc-900"
+                    >
+                      {inviting ? "Creating…" : "Copy link"}
+                    </button>
+                  </div>
+                </form>
               )}
               <button
                 onClick={() => setCreating(true)}

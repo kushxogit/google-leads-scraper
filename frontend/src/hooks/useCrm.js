@@ -1,7 +1,7 @@
 import { useEffect } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "../lib/supabase";
-import { useAuthWorkspace } from "../context/AuthWorkspaceContext";
+import { useAuthWorkspace } from "../context/authWorkspace";
 
 export const PIPELINE_STATUSES = [
   "new",

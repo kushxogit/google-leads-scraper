@@ -9,7 +9,7 @@ import {
   Target,
 } from "lucide-react";
 import { Link } from "react-router-dom";
-import { useAuthWorkspace } from "../context/AuthWorkspaceContext";
+import { useAuthWorkspace } from "../context/authWorkspace";
 import { useWorkspaceLeads } from "../hooks/useCrm";
 import { useWorkspaceTasks } from "../hooks/useTasks";
 
@@ -26,8 +26,20 @@ export default function DashboardOverview() {
   const count = (status) =>
     leads.filter((lead) => lead.status === status).length;
   const open = leads.filter((lead) => !["won", "lost"].includes(lead.status));
+  const openTasks = tasks.filter(
+    (task) => !["done", "cancelled"].includes(task.status),
+  );
+  const nextTaskFor = (leadId) =>
+    openTasks.filter((task) => task.lead_id === leadId).sort(taskOrder)[0];
+  const needsAction = open.filter((lead) => !nextTaskFor(lead.id)).length;
   const priority = [...open]
-    .sort((a, b) => (b.score || 0) - (a.score || 0))
+    .sort((a, b) => {
+      const aTask = nextTaskFor(a.id);
+      const bTask = nextTaskFor(b.id);
+      if (Boolean(aTask) !== Boolean(bTask)) return aTask ? -1 : 1;
+      if (aTask && bTask) return taskOrder(aTask, bTask);
+      return (b.score || 0) - (a.score || 0);
+    })
     .slice(0, 3);
   const winRate = leads.length
     ? Math.round((count("won") / leads.length) * 100)
@@ -69,7 +81,7 @@ export default function DashboardOverview() {
           </div>
           <div className="flex flex-wrap gap-2">
             <Link
-              to="/leads"
+              to="/leads?new=1"
               className="inline-flex items-center gap-2 rounded-2xl bg-white px-4 py-3 text-sm font-extrabold text-zinc-950 shadow-xl transition hover:-translate-y-0.5"
             >
               <Plus size={16} /> Create opportunity
@@ -83,7 +95,7 @@ export default function DashboardOverview() {
           </div>
         </div>
       </section>
-      <section className="grid gap-4 md:grid-cols-3">
+      <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
         <Metric
           tint="from-violet-500 to-fuchsia-500"
           label="In play"
@@ -97,6 +109,13 @@ export default function DashboardOverview() {
           value={count("qualified")}
           detail="Ready for a proposal"
           Icon={Target}
+        />
+        <Metric
+          tint="from-amber-400 to-orange-500"
+          label="Needs a next action"
+          value={needsAction}
+          detail="Active leads without an open task"
+          Icon={CalendarDays}
         />
         <Metric
           tint="from-emerald-400 to-lime-500"
@@ -140,6 +159,11 @@ export default function DashboardOverview() {
                     {[lead.niche, lead.area].filter(Boolean).join(" · ") ||
                       lead.company ||
                       "Opportunity"}
+                  </p>
+                  <p
+                    className={`mt-1 truncate text-[11px] font-bold ${nextTaskFor(lead.id) ? "text-violet-600" : "text-amber-600"}`}
+                  >
+                    {nextTaskFor(lead.id)?.title || "No next action planned"}
                   </p>
                 </div>
                 <span className="rounded-xl bg-violet-100 px-2.5 py-1 text-xs font-extrabold text-violet-700">
@@ -232,4 +256,10 @@ function StatRow({ label, value, tint }) {
       <span className="mono text-sm font-bold text-zinc-950">{value}</span>
     </div>
   );
+}
+
+function taskOrder(a, b) {
+  const aTime = a.scheduled_start || a.due_at || "9999";
+  const bTime = b.scheduled_start || b.due_at || "9999";
+  return String(aTime).localeCompare(String(bTime));
 }

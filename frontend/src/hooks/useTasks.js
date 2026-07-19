@@ -1,7 +1,7 @@
 import { useEffect } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "../lib/supabase";
-import { useAuthWorkspace } from "../context/AuthWorkspaceContext";
+import { useAuthWorkspace } from "../context/authWorkspace";
 import { useWorkspaceMembers } from "./useCrm";
 
 export const TASK_CATEGORIES = {
@@ -239,7 +239,8 @@ export function useWorkspaceTasks() {
 
 export function useTaskComments(taskId) {
   const { activeWorkspaceId } = useAuthWorkspace();
-  return useQuery({
+  const client = useQueryClient();
+  const query = useQuery({
     queryKey: ["task-comments", taskId],
     enabled: Boolean(taskId && activeWorkspaceId),
     queryFn: () =>
@@ -252,6 +253,27 @@ export function useTaskComments(taskId) {
           .order("created_at"),
       ),
   });
+  useEffect(() => {
+    if (!taskId) return undefined;
+    const channel = supabase
+      .channel(`task-comments:${taskId}:${crypto.randomUUID()}`)
+      .on(
+        "postgres_changes",
+        {
+          event: "*",
+          schema: "public",
+          table: "task_comments",
+          filter: `task_id=eq.${taskId}`,
+        },
+        () => client.invalidateQueries({ queryKey: ["task-comments", taskId] }),
+      )
+      .subscribe();
+    return () => {
+      channel.unsubscribe();
+      void supabase.removeChannel(channel);
+    };
+  }, [client, taskId]);
+  return query;
 }
 
 export function useNotifications() {
@@ -318,11 +340,22 @@ export function useNotifications() {
     );
     await client.invalidateQueries({ queryKey: key });
   };
+  const markRead = async (id) => {
+    await result(
+      supabase
+        .from("notifications")
+        .update({ read_at: new Date().toISOString() })
+        .eq("id", id)
+        .eq("recipient_id", user.id),
+    );
+    await client.invalidateQueries({ queryKey: key });
+  };
   return {
     ...query,
     notifications: query.data ?? [],
     unread: (query.data ?? []).filter((item) => !item.read_at).length,
     markAllRead,
+    markRead,
   };
 }
 

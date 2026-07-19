@@ -1,6 +1,7 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Sparkles, X } from "lucide-react";
 import { PIPELINE_STATUSES, useWorkspaceLeads } from "../hooks/useCrm";
+import { useFeedback } from "../context/feedback";
 
 const fields = [
   ["business_name", "Business name", true],
@@ -13,6 +14,7 @@ const fields = [
 
 export default function AddLeadModal({ isOpen, onClose }) {
   const { addLead } = useWorkspaceLeads();
+  const { notify } = useFeedback();
   const [form, setForm] = useState({
     business_name: "",
     phone: "",
@@ -23,12 +25,19 @@ export default function AddLeadModal({ isOpen, onClose }) {
     status: "new",
   });
   const [saving, setSaving] = useState(false);
+  useEffect(() => {
+    if (!isOpen) return undefined;
+    const close = (event) => event.key === "Escape" && onClose();
+    window.addEventListener("keydown", close);
+    return () => window.removeEventListener("keydown", close);
+  }, [isOpen, onClose]);
   if (!isOpen) return null;
   const submit = async (event) => {
     event.preventDefault();
     setSaving(true);
     try {
       await addLead(form);
+      notify(`${form.business_name} was added to Pipeline.`);
       setForm({
         business_name: "",
         phone: "",
@@ -40,24 +49,33 @@ export default function AddLeadModal({ isOpen, onClose }) {
       });
       onClose();
     } catch (e) {
-      alert(e.message);
+      notify(e.message, "error");
     } finally {
       setSaving(false);
     }
   };
   return (
-    <div className="fixed inset-0 z-[70] grid place-items-center bg-[#09090b]/80 p-4 backdrop-blur-sm">
+    <div
+      className="fixed inset-0 z-[70] grid place-items-center bg-zinc-950/35 p-4 backdrop-blur-sm"
+      onMouseDown={onClose}
+    >
       <form
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="add-lead-title"
         onSubmit={submit}
-        className="w-full max-w-xl overflow-hidden rounded-2xl border border-white/[.1] bg-[#141419] shadow-2xl"
+        onMouseDown={(event) => event.stopPropagation()}
+        className="panel w-full max-w-xl overflow-hidden bg-white shadow-2xl"
       >
-        <header className="flex items-start justify-between border-b border-white/[.07] p-6">
+        <header className="flex items-start justify-between border-b border-zinc-100 p-6">
           <div className="flex gap-3">
-            <span className="grid h-10 w-10 place-items-center rounded-xl bg-violet-500/15 text-violet-200">
+            <span className="grid h-10 w-10 place-items-center rounded-xl bg-violet-100 text-violet-600">
               <Sparkles size={18} />
             </span>
             <div>
-              <p className="text-lg font-extrabold">Add opportunity</p>
+              <p id="add-lead-title" className="text-lg font-extrabold">
+                Add opportunity
+              </p>
               <p className="mt-1 text-sm text-zinc-500">
                 Capture the essentials now. Enrich the profile later.
               </p>
@@ -66,7 +84,8 @@ export default function AddLeadModal({ isOpen, onClose }) {
           <button
             type="button"
             onClick={onClose}
-            className="rounded-lg p-1 text-zinc-500 hover:bg-white/[.06] hover:text-white"
+            aria-label="Close add opportunity"
+            className="rounded-lg p-1 text-zinc-400 hover:bg-zinc-100 hover:text-zinc-800"
           >
             <X size={20} />
           </button>
@@ -103,7 +122,7 @@ export default function AddLeadModal({ isOpen, onClose }) {
             </select>
           </label>
         </div>
-        <footer className="flex justify-end gap-3 border-t border-white/[.07] bg-black/10 p-5">
+        <footer className="flex justify-end gap-3 border-t border-zinc-100 bg-zinc-50/60 p-5">
           <button type="button" onClick={onClose} className="button-secondary">
             Cancel
           </button>

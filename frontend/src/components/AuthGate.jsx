@@ -7,7 +7,7 @@ import {
   Sparkles,
 } from "lucide-react";
 import { supabase } from "../lib/supabase";
-import { useAuthWorkspace } from "../context/AuthWorkspaceContext";
+import { useAuthWorkspace } from "../context/authWorkspace";
 
 export default function AuthGate({ children }) {
   const { user, loading, error } = useAuthWorkspace();
@@ -43,7 +43,7 @@ export default function AuthGate({ children }) {
       () =>
         supabase.auth.signInWithOtp({
           email,
-          options: { emailRedirectTo: window.location.origin },
+          options: { emailRedirectTo: window.location.href },
         }),
       "Check your inbox for your secure sign-in link.",
     );
@@ -59,7 +59,7 @@ export default function AuthGate({ children }) {
     setSubmitting(true);
     const { error: authError } = await supabase.auth.signInWithOAuth({
       provider: "google",
-      options: { redirectTo: window.location.origin },
+      options: { redirectTo: window.location.href },
     });
     if (authError) {
       setMessage(authError.message);
@@ -83,11 +83,11 @@ export default function AuthGate({ children }) {
                 to win great work.
               </h1>
               <p className="mt-5 max-w-sm text-sm leading-6 text-zinc-300">
-                Your leads, relationships, and next moves�beautifully in sync.
+                Your leads, relationships, and next moves—beautifully in sync.
               </p>
             </div>
             <p className="text-xs text-zinc-500">
-              LeadPilot � a workspace for momentum
+              LeadPilot · a workspace for momentum
             </p>
           </div>
           <div className="m-3 rounded-[28px] bg-white p-7 sm:m-5 sm:p-9">

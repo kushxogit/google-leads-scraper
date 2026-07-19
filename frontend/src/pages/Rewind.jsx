@@ -1,4 +1,5 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { Link, useSearchParams } from "react-router-dom";
 import {
   addDays,
   endOfDay,
@@ -16,6 +17,7 @@ import {
   MessageSquare,
   Plus,
   RotateCcw,
+  Trash2,
 } from "lucide-react";
 import TaskModal from "../components/TaskModal";
 import { useWorkspaceLeads } from "../hooks/useCrm";
@@ -25,7 +27,8 @@ import {
   useTaskComments,
   useWorkspaceTasks,
 } from "../hooks/useTasks";
-import { useAuthWorkspace } from "../context/AuthWorkspaceContext";
+import { useAuthWorkspace } from "../context/authWorkspace";
+import { useFeedback } from "../context/feedback";
 
 const DAY_START = 7;
 const DAY_END = 21;
@@ -35,13 +38,36 @@ export default function Rewind() {
   const { user } = useAuthWorkspace();
   const { leads } = useWorkspaceLeads();
   const taskApi = useWorkspaceTasks();
-  const [view, setView] = useState("today");
+  const { confirm } = useFeedback();
+  const [searchParams, setSearchParams] = useSearchParams();
+  const [view, setView] = useState("map");
   const [cursor, setCursor] = useState(startOfDay(new Date()));
   const [modalOpen, setModalOpen] = useState(false);
   const [editing, setEditing] = useState(null);
   const [selectedTask, setSelectedTask] = useState(null);
   const [owner, setOwner] = useState("all");
   const [category, setCategory] = useState("all");
+  useEffect(() => {
+    const taskId = searchParams.get("task");
+    const target = taskApi.tasks.find((task) => task.id === taskId);
+    if (target) setSelectedTask(target);
+  }, [searchParams, taskApi.tasks]);
+  const openTask = (task) => {
+    setSelectedTask(task);
+    setSearchParams((current) => {
+      const next = new URLSearchParams(current);
+      next.set("task", task.id);
+      return next;
+    });
+  };
+  const closeTask = () => {
+    setSelectedTask(null);
+    setSearchParams((current) => {
+      const next = new URLSearchParams(current);
+      next.delete("task");
+      return next;
+    });
+  };
   const range = useMemo(() => {
     const start =
       view === "week"
@@ -98,9 +124,11 @@ export default function Rewind() {
     );
     if (
       conflict &&
-      !window.confirm(
-        "This time overlaps a Google Calendar event. Schedule it anyway?",
-      )
+      !(await confirm({
+        title: "Schedule over a calendar event?",
+        description: "This time overlaps an existing Google Calendar event.",
+        confirmLabel: "Schedule anyway",
+      }))
     )
       return;
     await taskApi.updateTask(taskId, {
@@ -146,7 +174,8 @@ export default function Rewind() {
       <section className="panel flex flex-wrap items-center gap-2 p-3">
         <div className="flex rounded-2xl bg-zinc-100 p-1">
           {[
-            ["today", "Today"],
+            ["map", "Day map"],
+            ["today", "Timeline"],
             ["week", "Week"],
             ["team", "Team"],
           ].map(([key, label]) => (
@@ -216,12 +245,20 @@ export default function Rewind() {
         </select>
       </section>
       <div className="grid gap-4 xl:grid-cols-[280px_1fr]">
-        <Unplanned tasks={unplanned} api={taskApi} onOpen={setSelectedTask} />
+        <Unplanned tasks={unplanned} api={taskApi} onOpen={openTask} />
         {view === "team" ? (
           <TeamView
             tasks={filtered}
             members={taskApi.members}
-            onOpen={setSelectedTask}
+            onOpen={openTask}
+          />
+        ) : view === "map" ? (
+          <DayMap
+            day={cursor}
+            tasks={planned}
+            events={calendar.data ?? []}
+            members={taskApi.members}
+            onOpen={openTask}
           />
         ) : (
           <Timeline
@@ -229,7 +266,7 @@ export default function Rewind() {
             tasks={planned}
             events={calendar.data ?? []}
             onDrop={schedule}
-            onOpen={setSelectedTask}
+            onOpen={openTask}
           />
         )}
       </div>
@@ -253,15 +290,187 @@ export default function Rewind() {
           }
           members={taskApi.members}
           api={taskApi}
-          onClose={() => setSelectedTask(null)}
+          onClose={closeTask}
           onEdit={(task) => {
-            setSelectedTask(null);
+            closeTask();
             setEditing(task);
             setModalOpen(true);
           }}
         />
       )}
     </div>
+  );
+}
+
+function DayMap({ day, tasks, events, members, onOpen }) {
+  const entries = [
+    ...events.map((event) => ({
+      id: `event-${event.id}`,
+      type: "event",
+      title: event.display_title,
+      startsAt: event.starts_at,
+      endsAt: event.ends_at,
+      category: "meeting",
+    })),
+    ...tasks.map((task) => ({
+      id: task.id,
+      type: "task",
+      title: task.title,
+      startsAt: task.scheduled_start,
+      endsAt: task.scheduled_end,
+      category: task.category,
+      task,
+    })),
+  ].sort((a, b) => new Date(a.startsAt) - new Date(b.startsAt));
+  const periods = [
+    ["Morning", "Before noon", (hour) => hour < 12],
+    ["Afternoon", "12–5 PM", (hour) => hour >= 12 && hour < 17],
+    ["Evening", "After 5 PM", (hour) => hour >= 17],
+  ];
+  const activeEntries = entries.filter((entry) =>
+    isSameDay(new Date(entry.startsAt), day),
+  );
+  return (
+    <section className="panel overflow-hidden p-5 sm:p-7">
+      <div className="flex flex-col gap-3 border-b border-zinc-100 pb-5 sm:flex-row sm:items-end sm:justify-between">
+        <div>
+          <p className="eyebrow">Visual workflow</p>
+          <h2 className="mt-1 text-2xl font-extrabold tracking-[-.04em]">
+            Your day as a workflow
+          </h2>
+          <p className="mt-2 text-sm text-zinc-500">
+            Start at today, then follow each branch to the work that belongs in
+            that part of the day.
+          </p>
+        </div>
+        <div className="flex flex-wrap gap-2 text-[10px] font-extrabold uppercase tracking-[.12em] text-zinc-500">
+          {Object.entries(TASK_CATEGORIES).map(([key, item]) => (
+            <span key={key} className="flex items-center gap-1.5">
+              <span className={`h-2 w-2 rounded-full ${item.dot}`} />
+              {item.label}
+            </span>
+          ))}
+        </div>
+      </div>
+      <div className="relative mx-auto mt-7 max-w-6xl">
+        <div className="relative z-10 mx-auto w-fit text-center lg:after:absolute lg:after:left-1/2 lg:after:top-full lg:after:h-8 lg:after:w-px lg:after:-translate-x-1/2 lg:after:bg-violet-200">
+          <span className="mx-auto grid h-16 w-16 place-items-center rounded-[25px] border-4 border-white bg-gradient-to-br from-violet-600 to-fuchsia-500 text-[10px] font-extrabold uppercase tracking-[.14em] text-white shadow-[0_12px_28px_rgba(124,58,237,.32)]">
+            Today
+          </span>
+          <p className="mt-2 text-sm font-extrabold text-zinc-800">
+            {format(day, "EEEE, MMM d")}
+          </p>
+          <p className="text-[11px] text-zinc-400">
+            {activeEntries.length} planned commitment
+            {activeEntries.length === 1 ? "" : "s"}
+          </p>
+        </div>
+        <div className="relative mt-7 grid gap-6 lg:mt-12 lg:grid-cols-3 lg:gap-8 lg:before:absolute lg:before:left-[16.66%] lg:before:right-[16.66%] lg:before:top-0 lg:before:h-px lg:before:bg-violet-200">
+          {periods.map(([label, detail, matches]) => {
+            const periodEntries = activeEntries.filter((entry) =>
+              matches(new Date(entry.startsAt).getHours()),
+            );
+            return (
+              <section
+                key={label}
+                className="relative border-l border-violet-200 pl-5 lg:border-l-0 lg:pl-0 lg:pt-7 lg:before:absolute lg:before:left-1/2 lg:before:top-0 lg:before:h-7 lg:before:w-px lg:before:-translate-x-1/2 lg:before:bg-violet-200"
+              >
+                <div className="relative z-10 flex items-center gap-3 lg:block lg:text-center">
+                  <span className="grid h-11 w-11 shrink-0 place-items-center rounded-2xl border-4 border-white bg-zinc-950 text-[10px] font-extrabold uppercase tracking-wide text-white shadow-lg lg:mx-auto">
+                    {label.slice(0, 3)}
+                  </span>
+                  <div className="lg:pt-3">
+                    <p className="text-sm font-extrabold">{label}</p>
+                    <p className="text-[11px] text-zinc-400">{detail}</p>
+                  </div>
+                </div>
+                <div className="mt-4 space-y-3">
+                  {periodEntries.map((entry) => (
+                    <DayBubble
+                      key={entry.id}
+                      entry={entry}
+                      members={members}
+                      onOpen={onOpen}
+                    />
+                  ))}
+                  {!periodEntries.length && (
+                    <div className="rounded-2xl border border-dashed border-zinc-200 bg-zinc-50/60 p-4 text-sm text-zinc-400">
+                      Open space for focused work.
+                    </div>
+                  )}
+                </div>
+              </section>
+            );
+          })}
+        </div>
+      </div>
+      {!activeEntries.length && (
+        <div className="mt-6 rounded-3xl border border-dashed border-violet-200 bg-violet-50/50 p-8 text-center">
+          <Clock3 className="mx-auto text-violet-500" size={23} />
+          <p className="mt-3 text-sm font-extrabold text-zinc-800">
+            Your day is still open.
+          </p>
+          <p className="mt-1 text-sm text-zinc-500">
+            Drag an unplanned task into the Timeline, or add a task with a time.
+          </p>
+        </div>
+      )}
+    </section>
+  );
+}
+
+function DayBubble({ entry, members, onOpen }) {
+  const category = TASK_CATEGORIES[entry.category] ?? TASK_CATEGORIES.meeting;
+  const start = new Date(entry.startsAt);
+  const end = entry.endsAt ? new Date(entry.endsAt) : null;
+  const content = (
+    <>
+      <div className="flex items-start justify-between gap-3">
+        <span className="rounded-full bg-white/70 px-2 py-1 text-[9px] font-extrabold uppercase tracking-[.12em]">
+          {entry.type === "event" ? "Meeting" : category.label}
+        </span>
+        <span className="text-[10px] font-bold opacity-65">
+          {format(start, "h:mm a")}
+          {end ? ` – ${format(end, "h:mm a")}` : ""}
+        </span>
+      </div>
+      <p className="mt-4 text-base font-extrabold leading-5">{entry.title}</p>
+      {entry.task?.leads?.name && (
+        <p className="mt-2 truncate text-xs font-bold opacity-65">
+          {entry.task.leads.name}
+        </p>
+      )}
+      {entry.task?.assignee_ids?.length > 0 && (
+        <div className="mt-4 flex -space-x-1">
+          {entry.task.assignee_ids.map((id) => {
+            const member = members.find((item) => item.id === id);
+            return (
+              <span
+                key={id}
+                title={member?.full_name || member?.email}
+                className="grid h-6 w-6 place-items-center rounded-full border-2 border-white bg-white/80 text-[9px] font-extrabold text-zinc-700"
+              >
+                {(member?.full_name || member?.email || "?")[0].toUpperCase()}
+              </span>
+            );
+          })}
+        </div>
+      )}
+    </>
+  );
+  if (entry.type === "event")
+    return (
+      <article className="min-h-36 rounded-[24px] border border-rose-200 bg-rose-50 p-4 text-rose-950 shadow-sm">
+        {content}
+      </article>
+    );
+  return (
+    <button
+      onClick={() => onOpen(entry.task)}
+      className={`min-h-36 rounded-[24px] border p-4 text-left shadow-sm transition hover:-translate-y-1 hover:shadow-lg ${category.card}`}
+    >
+      {content}
+    </button>
   );
 }
 
@@ -490,6 +699,7 @@ function TaskCard({ task, members, onOpen }) {
 
 function TaskDrawer({ task, members, api, onClose, onEdit }) {
   const comments = useTaskComments(task.id);
+  const { confirm, notify } = useFeedback();
   const [body, setBody] = useState("");
   const category = TASK_CATEGORIES[task.category];
   const submit = async (e) => {
@@ -499,12 +709,33 @@ function TaskDrawer({ task, members, api, onClose, onEdit }) {
     setBody("");
     await comments.refetch();
   };
+  const remove = async () => {
+    if (
+      !(await confirm({
+        title: "Delete this task?",
+        description: "Its discussion and notifications will also be removed.",
+        confirmLabel: "Delete task",
+        danger: true,
+      }))
+    )
+      return;
+    try {
+      await api.deleteTask(task.id);
+      notify("Task deleted.");
+      onClose();
+    } catch (error) {
+      notify(error.message, "error");
+    }
+  };
   return (
     <div
       className="fixed inset-0 z-[75] bg-zinc-950/25 backdrop-blur-sm"
       onClick={onClose}
     >
       <aside
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="task-drawer-title"
         onClick={(e) => e.stopPropagation()}
         className="absolute bottom-0 right-0 top-0 w-full max-w-md overflow-y-auto bg-white p-6 shadow-2xl"
       >
@@ -516,7 +747,10 @@ function TaskDrawer({ task, members, api, onClose, onEdit }) {
         >
           {category.label}
         </div>
-        <h2 className="mt-3 text-3xl font-extrabold tracking-[-.05em]">
+        <h2
+          id="task-drawer-title"
+          className="mt-3 text-3xl font-extrabold tracking-[-.05em]"
+        >
           {task.title}
         </h2>
         {task.description && (
@@ -535,6 +769,25 @@ function TaskDrawer({ task, members, api, onClose, onEdit }) {
             </span>
           ))}
         </div>
+        {task.lead_id && (
+          <Link
+            to={`/leads/${task.lead_id}`}
+            onClick={onClose}
+            className="mt-4 flex items-center justify-between rounded-2xl border border-violet-100 bg-violet-50 p-3 text-sm font-extrabold text-violet-700"
+          >
+            <span>
+              Opportunity: {task.leads?.name || "View linked opportunity"}
+            </span>
+            <ChevronRight size={16} />
+          </Link>
+        )}
+        {(task.scheduled_start || task.due_at) && (
+          <div className="mt-4 rounded-2xl border border-zinc-100 bg-zinc-50 p-3 text-xs text-zinc-500">
+            {task.scheduled_start
+              ? `Scheduled ${format(new Date(task.scheduled_start), "MMM d · h:mm a")}`
+              : `Due ${format(new Date(task.due_at), "MMM d · h:mm a")}`}
+          </div>
+        )}
         <div className="mt-6 flex flex-wrap gap-2">
           <button
             onClick={() =>
@@ -549,6 +802,12 @@ function TaskDrawer({ task, members, api, onClose, onEdit }) {
           </button>
           <button onClick={() => onEdit(task)} className="button-secondary">
             Edit
+          </button>
+          <button
+            onClick={remove}
+            className="button-secondary ml-auto text-rose-600"
+          >
+            <Trash2 size={15} /> Delete
           </button>
         </div>
         <section className="mt-8 border-t border-zinc-100 pt-6">
@@ -573,6 +832,12 @@ function TaskDrawer({ task, members, api, onClose, onEdit }) {
               >
                 <p className="text-sm text-zinc-700">{comment.body}</p>
                 <p className="mt-1 text-[10px] text-zinc-400">
+                  {members.find((member) => member.id === comment.author_id)
+                    ?.full_name ||
+                    members.find((member) => member.id === comment.author_id)
+                      ?.email ||
+                    "Workspace member"}{" "}
+                  {" · "}
                   {format(new Date(comment.created_at), "MMM d · h:mm a")}
                 </p>
               </article>

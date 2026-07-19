@@ -1,5 +1,6 @@
 ﻿import { useState } from "react";
 import { NavLink, useLocation } from "react-router-dom";
+import { useEffect } from "react";
 import {
   Bell,
   CheckCheck,
@@ -11,20 +12,20 @@ import {
   Sparkles,
   Target,
   RotateCcw,
+  Plus,
   Users,
   X,
-  Clock3,
   Settings,
 } from "lucide-react";
 import WorkspaceSwitcher from "./WorkspaceSwitcher";
-import { useAuthWorkspace } from "../context/AuthWorkspaceContext";
+import { useAuthWorkspace } from "../context/authWorkspace";
 import { useNotifications } from "../hooks/useTasks";
+import CommandPalette from "./CommandPalette";
 
 const nav = [
   ["/", "Home", LayoutDashboard],
   ["/leads", "Pipeline", Users],
   ["/rewind", "Rewind", RotateCcw],
-  ["/follow-ups", "Follow-ups", Clock3],
   ["/jobs", "Scraper", Target],
   ["/settings", "Settings", Settings],
 ];
@@ -32,8 +33,19 @@ const nav = [
 export default function Layout({ children }) {
   const [mobileOpen, setMobileOpen] = useState(false);
   const [noticesOpen, setNoticesOpen] = useState(false);
+  const [commandOpen, setCommandOpen] = useState(false);
   const { user, signOut } = useAuthWorkspace();
   const notices = useNotifications();
+  useEffect(() => {
+    const listener = (event) => {
+      if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === "k") {
+        event.preventDefault();
+        setCommandOpen(true);
+      }
+    };
+    window.addEventListener("keydown", listener);
+    return () => window.removeEventListener("keydown", listener);
+  }, []);
   return (
     <div className="app-surface flex h-screen overflow-hidden p-0 md:p-3">
       <aside
@@ -84,7 +96,7 @@ export default function Layout({ children }) {
               {user?.email}
             </span>
             <button
-              onClick={() => signOut()}
+              onClick={() => void signOut()}
               title="Sign out"
               className="text-zinc-500 hover:text-white"
             >
@@ -109,15 +121,25 @@ export default function Layout({ children }) {
             >
               <Menu size={19} />
             </button>
-            <div className="hidden items-center gap-2 rounded-2xl border border-white/70 bg-white/55 px-3 py-2 text-xs font-semibold text-zinc-500 shadow-sm sm:flex">
+            <button
+              onClick={() => setCommandOpen(true)}
+              className="hidden items-center gap-2 rounded-2xl border border-white/70 bg-white/55 px-3 py-2 text-xs font-semibold text-zinc-500 shadow-sm sm:flex"
+            >
               <Search size={15} />
               <span>Search anything</span>
               <kbd className="ml-8 flex items-center gap-1 rounded-lg bg-zinc-100 px-1.5 py-1 text-[10px] text-zinc-400">
                 <Command size={10} />K
               </kbd>
-            </div>
+            </button>
           </div>
           <div className="flex items-center gap-3">
+            <button
+              onClick={() => setCommandOpen(true)}
+              aria-label="Create lead or task"
+              className="glass-orb grid h-10 w-10 place-items-center rounded-2xl text-violet-600"
+            >
+              <Plus size={18} />
+            </button>
             <div className="relative">
               <button
                 onClick={() => setNoticesOpen(!noticesOpen)}
@@ -150,8 +172,15 @@ export default function Layout({ children }) {
                     {notices.notifications.map((notice) => (
                       <NavLink
                         key={notice.id}
-                        to={notice.task_id ? "/rewind" : "#"}
-                        onClick={() => setNoticesOpen(false)}
+                        to={
+                          notice.task_id
+                            ? `/rewind?task=${notice.task_id}`
+                            : "/"
+                        }
+                        onClick={() => {
+                          void notices.markRead(notice.id);
+                          setNoticesOpen(false);
+                        }}
                         className={`block rounded-2xl p-3 ${notice.read_at ? "text-zinc-500" : "bg-violet-50 text-zinc-800"}`}
                       >
                         <p className="text-sm font-extrabold">{notice.title}</p>
@@ -179,6 +208,10 @@ export default function Layout({ children }) {
           {children}
         </div>
       </main>
+      <CommandPalette
+        open={commandOpen}
+        onClose={() => setCommandOpen(false)}
+      />
     </div>
   );
 }

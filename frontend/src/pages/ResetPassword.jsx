@@ -37,7 +37,7 @@ export default function ResetPassword() {
     const { error } = await supabase.auth.updateUser({ password });
     setSaving(false);
     if (error) return setMessage(error.message);
-    setMessage("Password updated. Redirecting to your workspace�");
+    setMessage("Password updated. Redirecting to your workspace…");
     window.setTimeout(() => navigate("/"), 900);
   };
   return (
