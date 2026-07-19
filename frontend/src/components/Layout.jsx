@@ -1,95 +1,13 @@
-import React, { useState } from 'react';
-import { NavLink, Outlet, useLocation } from 'react-router-dom';
-import { LayoutDashboard, Users, Clock, Target, Menu, X, Table } from 'lucide-react';
+import { useState } from 'react';
+import { NavLink, useLocation } from 'react-router-dom';
+import { Bell, Command, LayoutDashboard, LogOut, Menu, Search, Sparkles, Target, Table2, Users, X, Clock3 } from 'lucide-react';
+import WorkspaceSwitcher from './WorkspaceSwitcher';
+import { useAuthWorkspace } from '../context/AuthWorkspaceContext';
+
+const nav = [['/', 'Home', LayoutDashboard], ['/leads', 'Pipeline', Users], ['/tracker', 'Tracker', Table2], ['/follow-ups', 'Follow-ups', Clock3], ['/jobs', 'Scraper', Target]];
 
 export default function Layout({ children }) {
-  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-  
-  return (
-    <div className="flex h-screen bg-zinc-950 text-zinc-100 overflow-hidden font-sans">
-      {/* Mobile Sidebar Overlay */}
-      {mobileMenuOpen && (
-        <div 
-          className="fixed inset-0 bg-black/60 z-40 lg:hidden backdrop-blur-sm"
-          onClick={() => setMobileMenuOpen(false)}
-        />
-      )}
-
-      {/* Sidebar */}
-      <div className={`
-        fixed lg:static inset-y-0 left-0 z-50 w-64 glass flex flex-col border-r border-zinc-800/80
-        transform transition-transform duration-300 ease-in-out bg-zinc-950
-        ${mobileMenuOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}
-      `}>
-        <div className="p-6 shrink-0 flex items-center justify-between lg:justify-center">
-          <div className="font-bold text-xl tracking-tight text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-indigo-400 select-none flex items-center gap-2">
-            <div className="w-8 h-8 rounded-lg bg-blue-500/20 border border-blue-500/30 flex items-center justify-center text-blue-400 shadow-sm">
-              <Target size={18} />
-            </div>
-            LeadPilot
-          </div>
-          <button className="lg:hidden text-zinc-400 hover:text-white" onClick={() => setMobileMenuOpen(false)}>
-            <X size={24} />
-          </button>
-        </div>
-        
-        <nav className="flex-1 px-4 py-4 space-y-2 overflow-y-auto">
-          <NavItem to="/" icon={<LayoutDashboard size={18} />} label="Overview" onClick={() => setMobileMenuOpen(false)} />
-          <NavItem to="/leads" icon={<Users size={18} />} label="Pipeline" onClick={() => setMobileMenuOpen(false)} />
-          <NavItem to="/tracker" icon={<Table size={18} />} label="Tracker" onClick={() => setMobileMenuOpen(false)} />
-          <NavItem to="/follow-ups" icon={<Clock size={18} />} label="Tasks" onClick={() => setMobileMenuOpen(false)} />
-          <NavItem to="/jobs" icon={<Target size={18} />} label="Scraper" onClick={() => setMobileMenuOpen(false)} />
-        </nav>
-
-        <div className="p-6 shrink-0 border-t border-zinc-800/80">
-          <div className="text-xs text-zinc-500 font-medium">
-            System Online &bull; v1.0.0
-          </div>
-        </div>
-      </div>
-
-      {/* Main Content */}
-      <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
-        {/* Mobile Header */}
-        <div className="lg:hidden shrink-0 h-16 border-b border-zinc-800/80 flex items-center px-4 bg-zinc-950/80 backdrop-blur-md">
-          <button 
-            onClick={() => setMobileMenuOpen(true)}
-            className="p-2 -ml-2 text-zinc-400 hover:text-white transition-colors"
-          >
-            <Menu size={24} />
-          </button>
-          <div className="ml-4 font-bold text-lg text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-indigo-400">
-            LeadPilot
-          </div>
-        </div>
-
-        <div className="flex-1 overflow-y-auto overflow-x-hidden p-4 lg:p-8 bg-gradient-to-br from-zinc-950 to-zinc-900/50">
-          {children}
-        </div>
-      </div>
-    </div>
-  );
+  const [mobileOpen, setMobileOpen] = useState(false); const { user, signOut } = useAuthWorkspace();
+  return <div className="app-surface flex h-screen overflow-hidden p-0 md:p-3"><aside className={`fixed inset-y-3 left-3 z-50 flex w-[260px] flex-col rounded-[28px] bg-[#171719] p-3 text-white shadow-[0_24px_80px_rgba(23,18,38,.30)] transition-transform md:static md:translate-x-0 ${mobileOpen ? 'translate-x-0' : '-translate-x-[110%]'}`}><div className="flex h-14 items-center justify-between px-2"><div className="flex items-center gap-2.5"><span className="grid h-9 w-9 place-items-center rounded-2xl liquid-button"><Sparkles size={17}/></span><span className="text-[15px] font-extrabold tracking-tight">LeadPilot</span></div><button onClick={() => setMobileOpen(false)} className="text-zinc-500 md:hidden"><X/></button></div><WorkspaceSwitcher/><nav className="mt-4 space-y-1 px-1">{nav.map(([to, label, Icon]) => <NavItem key={to} to={to} label={label} Icon={Icon} close={() => setMobileOpen(false)}/>)}</nav><div className="mt-auto"><div className="mx-1 mb-3 rounded-2xl bg-gradient-to-br from-violet-500/25 to-fuchsia-500/10 p-3"><p className="text-[10px] font-bold uppercase tracking-[.16em] text-violet-200/70">Built for momentum</p><p className="mt-1 text-xs leading-5 text-zinc-300">Every lead, signal, and next move in one place.</p></div><div className="flex items-center gap-2 border-t border-white/[.08] px-2 pt-3"><span className="grid h-8 w-8 place-items-center rounded-full bg-white/[.1] text-xs font-bold">{(user?.email?.[0] || 'U').toUpperCase()}</span><span className="min-w-0 flex-1 truncate text-xs text-zinc-400">{user?.email}</span><button onClick={() => signOut()} title="Sign out" className="text-zinc-500 hover:text-white"><LogOut size={15}/></button></div></div></aside>{mobileOpen && <button aria-label="Close menu" className="fixed inset-0 z-40 bg-zinc-950/30 backdrop-blur-sm md:hidden" onClick={() => setMobileOpen(false)}/>}<main className="relative z-10 flex min-w-0 flex-1 flex-col overflow-hidden"><header className="flex h-[76px] shrink-0 items-center justify-between px-5 md:px-7"><div className="flex items-center gap-3"><button onClick={() => setMobileOpen(true)} className="grid h-10 w-10 place-items-center rounded-2xl bg-white/70 text-zinc-600 shadow-sm md:hidden"><Menu size={19}/></button><div className="hidden items-center gap-2 rounded-2xl border border-white/70 bg-white/55 px-3 py-2 text-xs font-semibold text-zinc-500 shadow-sm sm:flex"><Search size={15}/><span>Search anything</span><kbd className="ml-8 flex items-center gap-1 rounded-lg bg-zinc-100 px-1.5 py-1 text-[10px] text-zinc-400"><Command size={10}/>K</kbd></div></div><div className="flex items-center gap-3"><button className="glass-orb grid h-10 w-10 place-items-center rounded-2xl text-zinc-600"><Bell size={17}/></button><div className="hidden h-10 items-center rounded-2xl border border-white/80 bg-white/55 px-3 text-xs font-bold text-zinc-600 shadow-sm sm:flex">Realtime synced <span className="ml-2 h-2 w-2 rounded-full bg-emerald-400 shadow-[0_0_0_3px_rgba(52,211,153,.16)]"/></div></div></header><div className="scrollbar-thin relative flex-1 overflow-y-auto px-4 pb-6 md:px-6">{children}</div></main></div>;
 }
-
-function NavItem({ to, icon, label, onClick }) {
-  const location = useLocation();
-  const isActive = location.pathname === to || (to !== '/' && location.pathname.startsWith(to));
-  
-  return (
-    <NavLink 
-      to={to} 
-      onClick={onClick}
-      className={`flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium transition-all duration-200 group relative overflow-hidden ${
-        isActive 
-          ? 'text-white bg-blue-500/10 border border-blue-500/20 shadow-sm' 
-          : 'text-zinc-400 hover:text-zinc-200 hover:bg-zinc-800/50'
-      }`}
-    >
-      {isActive && (
-        <div className="absolute left-0 top-0 bottom-0 w-1 bg-blue-500 shadow-[0_0_10px_rgba(59,130,246,0.5)]"></div>
-      )}
-      <span className={`${isActive ? 'text-blue-400' : 'text-zinc-500 group-hover:text-zinc-300'} transition-colors`}>{icon}</span>
-      {label}
-    </NavLink>
-  );
-}
+function NavItem({ to, label, Icon, close }) { const location = useLocation(); const active = location.pathname === to || (to !== '/' && location.pathname.startsWith(to)); return <NavLink to={to} onClick={close} className={`group flex items-center gap-3 rounded-2xl px-3 py-2.5 text-sm transition ${active ? 'bg-white text-zinc-950 shadow-[0_8px_20px_rgba(0,0,0,.18)]' : 'text-zinc-400 hover:bg-white/[.07] hover:text-white'}`}><Icon size={16} className={active ? 'text-violet-600' : 'text-zinc-500 group-hover:text-zinc-300'}/><span className="font-bold">{label}</span>{active && <span className="ml-auto h-1.5 w-1.5 rounded-full bg-violet-500"/>}</NavLink>; }

@@ -1,100 +1,13 @@
-import React, { useEffect, useState } from 'react';
-import axios from 'axios';
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
-import { TrendingUp, Globe, Users, Briefcase, LayoutDashboard } from 'lucide-react';
+import { ArrowUpRight, CalendarDays, CheckCircle2, ChevronRight, CircleDashed, Plus, Sparkles, Target } from 'lucide-react';
+import { Link } from 'react-router-dom';
+import { useAuthWorkspace } from '../context/AuthWorkspaceContext';
+import { useWorkspaceLeads } from '../hooks/useCrm';
 
 export default function DashboardOverview() {
-  const [stats, setStats] = useState(null);
-
-  useEffect(() => {
-    axios.get('http://localhost:3001/api/leads/stats')
-      .then(res => setStats(res.data))
-      .catch(err => console.error(err));
-  }, []);
-
-  if (!stats) return <div className="animate-pulse text-zinc-500 font-bold uppercase tracking-widest">// LOADING_DASHBOARD</div>;
-
-  const chartData = [
-    { name: 'New', count: stats.total - stats.called - stats.interested - stats.wonDeals },
-    { name: 'Called', count: stats.called },
-    { name: 'Interested', count: stats.interested },
-    { name: 'Follow-Ups', count: stats.followUps },
-    { name: 'Won', count: stats.wonDeals }
-  ];
-
-  return (
-    <div className="space-y-6 animate-in fade-in duration-500 max-w-7xl mx-auto pb-12">
-      <div className="flex items-center gap-3 mb-8 border-b border-zinc-800/80 pb-4">
-        <LayoutDashboard className="text-blue-400" size={28} />
-        <div>
-          <h1 className="text-3xl font-bold text-zinc-100 tracking-tight">Overview</h1>
-          <p className="text-zinc-500 font-medium mt-1 text-sm">System performance and lead metrics.</p>
-        </div>
-      </div>
-
-      {/* KPI Grid */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
-        <StatCard title="Total Leads" value={stats.total} icon={<Users size={24} />} color="blue" />
-        <StatCard title="High Priority" value={stats.highPriority} icon={<TrendingUp size={24} />} color="emerald" />
-        <StatCard title="No Website" value={stats.noWebsite} icon={<Globe size={24} />} color="rose" />
-        <StatCard title="Proposals Sent" value={stats.proposalsSent} icon={<Briefcase size={24} />} color="amber" />
-      </div>
-
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <div className="lg:col-span-2 glass p-6">
-          <h2 className="text-sm font-semibold text-zinc-400 mb-6 uppercase tracking-wider">Pipeline Metrics</h2>
-          <div className="h-72 w-full">
-            <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={chartData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#27272a" vertical={false} />
-                <XAxis dataKey="name" stroke="#71717a" fontSize={12} tickLine={false} axisLine={false} />
-                <YAxis stroke="#71717a" fontSize={12} tickLine={false} axisLine={false} />
-                <Tooltip 
-                  cursor={{fill: '#18181b'}} 
-                  contentStyle={{ backgroundColor: '#09090b', border: '1px solid #27272a', borderRadius: '8px', color: '#60a5fa' }} 
-                  itemStyle={{ color: '#60a5fa' }}
-                />
-                <Bar dataKey="count" fill="#3b82f6" radius={[4, 4, 0, 0]} barSize={40} />
-              </BarChart>
-            </ResponsiveContainer>
-          </div>
-        </div>
-
-        <div className="glass p-6 flex flex-col justify-center">
-          <h2 className="text-sm font-semibold text-zinc-400 mb-6 uppercase tracking-wider">Action Items</h2>
-          <div className="space-y-4">
-            <div className="flex items-center justify-between p-4 bg-zinc-900/50 border border-zinc-800/80 rounded-lg">
-              <span className="text-zinc-400 font-medium text-sm">Follow Ups Due</span>
-              <span className="text-xl font-bold text-blue-400">{stats.followUps}</span>
-            </div>
-            <div className="flex items-center justify-between p-4 bg-zinc-900/50 border border-zinc-800/80 rounded-lg">
-              <span className="text-zinc-400 font-medium text-sm">Won Deals</span>
-              <span className="text-xl font-bold text-emerald-400">{stats.wonDeals}</span>
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
-  );
+  const { leads, isLoading } = useWorkspaceLeads(); const { activeWorkspace } = useAuthWorkspace();
+  if (isLoading) return <div className="panel p-8 text-sm text-zinc-500">Loading your workspace…</div>;
+  const count = (status) => leads.filter((lead) => lead.status === status).length; const open = leads.filter((lead) => !['won', 'lost'].includes(lead.status)); const priority = [...open].sort((a,b) => (b.score || 0) - (a.score || 0)).slice(0, 3); const winRate = leads.length ? Math.round((count('won') / leads.length) * 100) : 0;
+  return <div className="mx-auto max-w-[1420px] space-y-5 pb-4"><section className="relative overflow-hidden rounded-[32px] bg-[#111114] px-6 py-7 text-white shadow-[0_22px_60px_rgba(50,35,105,.25)] sm:px-9 sm:py-9"><div className="absolute -right-10 -top-20 h-72 w-72 rounded-full bg-violet-500 blur-[75px] opacity-70"/><div className="absolute right-[18%] top-4 h-40 w-40 rounded-full bg-fuchsia-400 blur-[70px] opacity-35"/><div className="absolute -bottom-24 left-[42%] h-48 w-48 rounded-full bg-cyan-400 blur-[80px] opacity-25"/><div className="relative flex flex-col gap-8 lg:flex-row lg:items-end lg:justify-between"><div><div className="inline-flex items-center gap-2 rounded-full border border-white/[.16] bg-white/[.08] px-3 py-1 text-[10px] font-extrabold tracking-[.16em] text-violet-100"><Sparkles size={12}/> {activeWorkspace?.name || 'YOUR WORKSPACE'}</div><h1 className="mt-5 max-w-2xl text-4xl font-extrabold leading-[.98] tracking-[-.065em] sm:text-6xl">A beautiful place<br/>to close great work.</h1><p className="mt-4 max-w-md text-sm leading-6 text-zinc-300">Keep every opportunity, teammate, and next step delightfully in flow.</p></div><div className="flex flex-wrap gap-2"><Link to="/leads" className="inline-flex items-center gap-2 rounded-2xl bg-white px-4 py-3 text-sm font-extrabold text-zinc-950 shadow-xl transition hover:-translate-y-0.5"><Plus size={16}/> Create opportunity</Link><Link to="/leads" className="inline-flex items-center gap-2 rounded-2xl border border-white/[.18] bg-white/[.08] px-4 py-3 text-sm font-bold text-white backdrop-blur transition hover:bg-white/[.14]">View pipeline <ArrowUpRight size={16}/></Link></div></div></section><section className="grid gap-4 md:grid-cols-3"><Metric tint="from-violet-500 to-fuchsia-500" label="In play" value={open.length} detail="Active conversations" Icon={CircleDashed}/><Metric tint="from-cyan-400 to-blue-500" label="Qualified" value={count('qualified')} detail="Ready for a proposal" Icon={Target}/><Metric tint="from-emerald-400 to-lime-500" label="Win rate" value={`${winRate}%`} detail={`${count('won')} opportunities won`} Icon={CheckCircle2}/></section><section className="grid gap-5 xl:grid-cols-[1.15fr_.85fr]"><div className="panel p-5 sm:p-7"><div className="flex items-start justify-between"><div><p className="eyebrow">Your next moves</p><h2 className="mt-1 text-xl font-extrabold tracking-[-.035em]">Priority opportunities</h2></div><Link to="/leads" className="flex items-center gap-1 text-sm font-bold text-violet-600">All opportunities <ChevronRight size={16}/></Link></div><div className="mt-6 space-y-3">{priority.map((lead, index) => <Link key={lead.id} to={`/leads/${lead.id}`} className="group flex items-center gap-4 rounded-2xl border border-zinc-100 bg-white/50 p-3.5 transition hover:-translate-y-0.5 hover:border-violet-200 hover:bg-white hover:shadow-lg hover:shadow-violet-100/50"><span className="mono grid h-10 w-10 place-items-center rounded-2xl bg-zinc-950 text-xs text-white">0{index + 1}</span><div className="min-w-0 flex-1"><p className="truncate text-sm font-extrabold group-hover:text-violet-700">{lead.business_name}</p><p className="mt-1 truncate text-xs text-zinc-500">{[lead.niche, lead.area].filter(Boolean).join(' · ') || lead.company || 'Opportunity'}</p></div><span className="rounded-xl bg-violet-100 px-2.5 py-1 text-xs font-extrabold text-violet-700">Score {lead.score || '—'}</span><ArrowUpRight size={16} className="text-zinc-300 group-hover:text-violet-500"/></Link>)}{!priority.length && <div className="rounded-2xl border border-dashed border-zinc-200 p-10 text-center text-sm text-zinc-500">Your first opportunity will appear here.</div>}</div></div><div className="panel relative overflow-hidden p-6"><div className="absolute -right-8 -top-10 h-36 w-36 rounded-full bg-orange-300/50 blur-3xl"/><div className="relative"><div className="flex items-center gap-3"><span className="grid h-10 w-10 place-items-center rounded-2xl bg-amber-100 text-amber-600"><CalendarDays size={18}/></span><div><p className="eyebrow">Flow</p><h2 className="mt-0.5 text-lg font-extrabold">Today at a glance</h2></div></div><div className="mt-6 space-y-3"><StatRow label="New leads waiting" value={count('new')} tint="bg-sky-400"/><StatRow label="Proposals in flight" value={count('proposal')} tint="bg-fuchsia-400"/><StatRow label="Follow-ups scheduled" value={leads.filter((lead) => lead.follow_up_date).length} tint="bg-amber-400"/></div><Link to="/follow-ups" className="button-secondary mt-6 w-full">Review your day</Link></div></div></section></div>;
 }
-
-function StatCard({ title, value, icon, color }) {
-  const colorMap = {
-    blue: 'text-blue-400 border-blue-400/20 bg-blue-500/10',
-    emerald: 'text-emerald-400 border-emerald-400/20 bg-emerald-500/10',
-    rose: 'text-rose-400 border-rose-400/20 bg-rose-500/10',
-    amber: 'text-amber-400 border-amber-400/20 bg-amber-500/10',
-  };
-  
-  return (
-    <div className={`glass p-6 cyber-glow group flex items-start justify-between`}>
-      <div>
-        <p className="text-sm font-medium text-zinc-500 mb-1">{title}</p>
-        <h3 className="text-4xl font-bold text-zinc-100">{value}</h3>
-      </div>
-      <div className={`p-3 rounded-xl border ${colorMap[color]}`}>
-        {icon}
-      </div>
-    </div>
-  );
-}
+function Metric({ tint, label, value, detail, Icon }) { return <article className="panel relative overflow-hidden p-5"><div className={`absolute right-0 top-0 h-24 w-24 translate-x-6 -translate-y-6 rounded-full bg-gradient-to-br ${tint} opacity-25 blur-2xl`}/><div className={`grid h-10 w-10 place-items-center rounded-2xl bg-gradient-to-br ${tint} text-white shadow-lg`}><Icon size={18}/></div><p className="metric-number mt-5 text-4xl font-extrabold">{value}</p><p className="mt-1 text-sm font-extrabold text-zinc-700">{label}</p><p className="mt-1 text-xs text-zinc-400">{detail}</p></article>; }
+function StatRow({ label, value, tint }) { return <div className="flex items-center gap-3 rounded-2xl border border-zinc-100 bg-white/55 px-3.5 py-3"><span className={`h-2.5 w-2.5 rounded-full ${tint}`}/><span className="flex-1 text-sm font-semibold text-zinc-600">{label}</span><span className="mono text-sm font-bold text-zinc-950">{value}</span></div>; }
