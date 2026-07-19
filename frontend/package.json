@@ -10,6 +10,10 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "@supabase/supabase-js": "^2.57.4",
+    "@tanstack/query-sync-storage-persister": "^5.101.2",
+    "@tanstack/react-query": "^5.101.2",
+    "@tanstack/react-query-persist-client": "^5.101.2",
     "autoprefixer": "^10.5.2",
     "axios": "^1.18.1",
     "date-fns": "^4.4.0",
