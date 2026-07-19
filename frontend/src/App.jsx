@@ -6,6 +6,7 @@ import ScrapeJobs from './pages/ScrapeJobs';
 import LeadsTable from './pages/LeadsTable';
 import LeadDetail from './pages/LeadDetail';
 import FollowUps from './pages/FollowUps';
+import Tracker from './pages/Tracker';
 
 function App() {
   return (
@@ -16,6 +17,7 @@ function App() {
           <Route path="/jobs" element={<ScrapeJobs />} />
           <Route path="/leads" element={<LeadsTable />} />
           <Route path="/leads/:id" element={<LeadDetail />} />
+          <Route path="/tracker" element={<Tracker />} />
           <Route path="/follow-ups" element={<FollowUps />} />
         </Routes>
       </Layout>

@@ -3,9 +3,11 @@ import { Link } from 'react-router-dom';
 import axios from 'axios';
 import { Phone, Globe, MoreHorizontal, MessageCircle, MapPin } from 'lucide-react';
 import Papa from 'papaparse';
+import AddLeadModal from '../components/AddLeadModal';
 
 export default function LeadsTable() {
   const [leads, setLeads] = useState([]);
+  const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [filter, setFilter] = useState('');
 
   const [nicheFilter, setNicheFilter] = useState('');
@@ -85,10 +87,13 @@ export default function LeadsTable() {
           <p className="text-zinc-500 font-medium mt-1 text-sm">Track and manage your leads.</p>
         </div>
         <div className="flex flex-col sm:flex-row gap-3 w-full xl:w-auto">
+          <button onClick={() => setIsAddModalOpen(true)} className="bg-blue-600 hover:bg-blue-500 text-white border border-blue-500 rounded-lg px-4 py-2 text-sm font-medium transition-colors whitespace-nowrap">
+            Add Lead
+          </button>
           <button onClick={exportCSV} className="bg-zinc-800 hover:bg-zinc-700 text-zinc-300 border border-zinc-700 rounded-lg px-4 py-2 text-sm font-medium transition-colors whitespace-nowrap">
             Export CSV
           </button>
-          <label className="bg-blue-600/20 hover:bg-blue-600/30 text-blue-400 border border-blue-500/30 rounded-lg px-4 py-2 text-sm font-medium cursor-pointer transition-colors whitespace-nowrap text-center">
+          <label className="bg-zinc-800 hover:bg-zinc-700 text-zinc-300 border border-zinc-700 rounded-lg px-4 py-2 text-sm font-medium cursor-pointer transition-colors whitespace-nowrap text-center">
             Import CSV
             <input type="file" accept=".csv" className="hidden" onChange={handleImport} />
           </label>
@@ -145,6 +150,7 @@ export default function LeadsTable() {
           );
         })}
       </div>
+      <AddLeadModal isOpen={isAddModalOpen} onClose={() => setIsAddModalOpen(false)} onLeadAdded={fetchLeads} />
     </div>
   );
 }

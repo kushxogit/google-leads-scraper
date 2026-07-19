@@ -34,7 +34,7 @@ router.get('/:id', (req, res) => {
 });
 
 router.patch('/:id', (req, res) => {
-  const allowedFields = ['phone', 'email', 'website', 'status', 'called', 'follow_up_date', 'remarks'];
+  const allowedFields = ['business_name', 'niche', 'area', 'phone', 'email', 'website', 'address', 'rating', 'reviews', 'source', 'source_url', 'score', 'status', 'called', 'follow_up_date', 'remarks'];
   const updates = [];
   const params = [];
   
@@ -58,6 +58,35 @@ router.delete('/:id', (req, res) => {
   db.prepare('DELETE FROM interactions WHERE lead_id = ?').run(req.params.id);
   db.prepare('DELETE FROM leads WHERE id = ?').run(req.params.id);
   res.json({ success: true });
+});
+
+router.post('/', (req, res) => {
+  const { business_name, niche, area, phone, email, website, address, status, remarks, source } = req.body;
+  
+  const insertStmt = db.prepare(`
+    INSERT INTO leads (
+      business_name, niche, area, phone, email, website, address, source, status, remarks
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+  `);
+  
+  try {
+    const info = insertStmt.run(
+      business_name || 'Unnamed Lead',
+      niche || '',
+      area || '',
+      phone || '',
+      email || '',
+      website || '',
+      address || '',
+      source || 'manual',
+      status || 'new',
+      remarks || ''
+    );
+    res.json({ success: true, id: info.lastInsertRowid });
+  } catch (error) {
+    console.error('Error adding lead:', error);
+    res.status(500).json({ error: 'Failed to add lead' });
+  }
 });
 
 router.post('/import', (req, res) => {

@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { NavLink, Outlet, useLocation } from 'react-router-dom';
-import { LayoutDashboard, Users, Clock, Target, Menu, X } from 'lucide-react';
+import { LayoutDashboard, Users, Clock, Target, Menu, X, Table } from 'lucide-react';
 
 export default function Layout({ children }) {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
@@ -36,6 +36,7 @@ export default function Layout({ children }) {
         <nav className="flex-1 px-4 py-4 space-y-2 overflow-y-auto">
           <NavItem to="/" icon={<LayoutDashboard size={18} />} label="Overview" onClick={() => setMobileMenuOpen(false)} />
           <NavItem to="/leads" icon={<Users size={18} />} label="Pipeline" onClick={() => setMobileMenuOpen(false)} />
+          <NavItem to="/tracker" icon={<Table size={18} />} label="Tracker" onClick={() => setMobileMenuOpen(false)} />
           <NavItem to="/follow-ups" icon={<Clock size={18} />} label="Tasks" onClick={() => setMobileMenuOpen(false)} />
           <NavItem to="/jobs" icon={<Target size={18} />} label="Scraper" onClick={() => setMobileMenuOpen(false)} />
         </nav>
