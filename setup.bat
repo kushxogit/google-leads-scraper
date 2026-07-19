@@ -5,18 +5,21 @@ echo ===================================================
 echo.
 
 echo [1/5] Installing root dependencies...
-call npm install
+call npm ci
+if errorlevel 1 goto :install_failed
 echo.
 
 echo [2/5] Installing backend dependencies...
 cd backend
-call npm install
+call npm ci
+if errorlevel 1 goto :install_failed
 cd ..
 echo.
 
 echo [3/5] Installing frontend dependencies (including Supabase and query cache packages)...
 cd frontend
-call npm install
+call npm ci
+if errorlevel 1 goto :install_failed
 cd ..
 echo.
 
@@ -33,6 +36,7 @@ echo.
 echo [5/5] Installing Playwright browsers for the local scraper...
 cd backend
 call npx playwright install
+if errorlevel 1 goto :install_failed
 cd ..
 echo.
 
@@ -50,3 +54,11 @@ echo   - Database migrations live in supabase\migrations and are already applied
 echo   - Edge Function deployment is optional and requires the Supabase CLI plus webhook secrets.
 echo.
 pause
+exit /b 0
+
+:install_failed
+echo.
+echo Setup stopped because a dependency or browser installation failed.
+echo Review the error above, then run setup.bat again.
+pause
+exit /b 1

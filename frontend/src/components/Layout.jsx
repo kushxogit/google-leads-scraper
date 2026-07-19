@@ -1,10 +1,10 @@
-import { useState } from 'react';
+﻿import { useState } from 'react';
 import { NavLink, useLocation } from 'react-router-dom';
-import { Bell, Command, LayoutDashboard, LogOut, Menu, Search, Sparkles, Target, Table2, Users, X, Clock3 } from 'lucide-react';
+import { Bell, Command, LayoutDashboard, LogOut, Menu, Search, Sparkles, Target, Table2, Users, X, Clock3, Settings } from 'lucide-react';
 import WorkspaceSwitcher from './WorkspaceSwitcher';
 import { useAuthWorkspace } from '../context/AuthWorkspaceContext';
 
-const nav = [['/', 'Home', LayoutDashboard], ['/leads', 'Pipeline', Users], ['/tracker', 'Tracker', Table2], ['/follow-ups', 'Follow-ups', Clock3], ['/jobs', 'Scraper', Target]];
+const nav = [['/', 'Home', LayoutDashboard], ['/leads', 'Pipeline', Users], ['/tracker', 'Tracker', Table2], ['/follow-ups', 'Follow-ups', Clock3], ['/jobs', 'Scraper', Target], ['/settings', 'Settings', Settings]];
 
 export default function Layout({ children }) {
   const [mobileOpen, setMobileOpen] = useState(false); const { user, signOut } = useAuthWorkspace();
