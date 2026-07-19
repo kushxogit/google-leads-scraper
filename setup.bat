@@ -4,23 +4,33 @@ echo   LeadPilot Setup - Installing Prerequisites
 echo ===================================================
 echo.
 
-echo [1/4] Installing root dependencies...
+echo [1/5] Installing root dependencies...
 call npm install
 echo.
 
-echo [2/4] Installing backend dependencies...
+echo [2/5] Installing backend dependencies...
 cd backend
 call npm install
 cd ..
 echo.
 
-echo [3/4] Installing frontend dependencies...
+echo [3/5] Installing frontend dependencies (including Supabase and query cache packages)...
 cd frontend
 call npm install
 cd ..
 echo.
 
-echo [4/4] Installing Playwright browsers for the scraper...
+echo [4/5] Creating local frontend configuration if needed...
+if not exist frontend\.env.local (
+  copy frontend\.env.example frontend\.env.local >nul
+  echo Created frontend\.env.local from the example file.
+  echo Update VITE_SUPABASE_URL and VITE_SUPABASE_PUBLISHABLE_KEY before starting the app.
+) else (
+  echo frontend\.env.local already exists. Keeping your existing configuration.
+)
+echo.
+
+echo [5/5] Installing Playwright browsers for the local scraper...
 cd backend
 call npx playwright install
 cd ..
@@ -29,7 +39,14 @@ echo.
 echo ===================================================
 echo   Setup Complete!
 echo ===================================================
-echo You can now start the application by running:
-echo npm start
+echo Commands:
+echo   npm start       - Start the frontend at http://localhost:5173 and local scraper API at http://localhost:3001
+echo   npm run build   - Create a production frontend build in frontend\dist
+echo   npm run lint    - Check the frontend source
+echo.
+echo Supabase:
+echo   - The frontend requires frontend\.env.local with your Supabase URL and publishable key.
+echo   - Database migrations live in supabase\migrations and are already applied to the configured project.
+echo   - Edge Function deployment is optional and requires the Supabase CLI plus webhook secrets.
 echo.
 pause
