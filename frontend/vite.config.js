@@ -5,7 +5,9 @@ import react from '@vitejs/plugin-react'
 export default defineConfig({
   plugins: [react()],
   server: {
-    port: 5173,
-    strictPort: true,
+    // Set VITE_PORT to request a particular port. When it is occupied, Vite
+    // will select the next available one instead of refusing to start.
+    port: Number(process.env.VITE_PORT) || 5173,
+    strictPort: false,
   },
 })

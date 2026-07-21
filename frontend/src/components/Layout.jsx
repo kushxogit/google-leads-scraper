@@ -16,6 +16,7 @@ import {
   Users,
   X,
   Settings,
+  NotebookPen,
 } from "lucide-react";
 import WorkspaceSwitcher from "./WorkspaceSwitcher";
 import { useAuthWorkspace } from "../context/authWorkspace";
@@ -26,6 +27,7 @@ const nav = [
   ["/", "Home", LayoutDashboard],
   ["/leads", "Pipeline", Users],
   ["/rewind", "Rewind", RotateCcw],
+  ["/notes", "Notes", NotebookPen],
   ["/jobs", "Scraper", Target],
   ["/settings", "Settings", Settings],
 ];
@@ -175,6 +177,8 @@ export default function Layout({ children }) {
                         to={
                           notice.task_id
                             ? `/rewind?task=${notice.task_id}`
+                            : notice.note_id
+                              ? `/notes?note=${notice.note_id}`
                             : "/"
                         }
                         onClick={() => {

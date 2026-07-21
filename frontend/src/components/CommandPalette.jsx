@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import {
   CalendarDays,
   CheckSquare2,
+  NotebookPen,
   Plus,
   Search,
   Target,
@@ -126,6 +127,12 @@ export default function CommandPalette({
                   label="Open today"
                   detail="View the Rewind timeline"
                   onClick={() => go("/rewind")}
+                />
+                <Action
+                  icon={NotebookPen}
+                  label="Open notes"
+                  detail="Capture private or shared context"
+                  onClick={() => go("/notes")}
                 />
                 <Action
                   icon={Target}

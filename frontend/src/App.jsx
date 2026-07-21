@@ -20,6 +20,7 @@ const ScrapeJobs = lazy(() => import("./pages/ScrapeJobs"));
 const LeadsTable = lazy(() => import("./pages/LeadsTable"));
 const LeadDetail = lazy(() => import("./pages/LeadDetail"));
 const Rewind = lazy(() => import("./pages/Rewind"));
+const Notes = lazy(() => import("./pages/Notes"));
 const CalendarCallback = lazy(() => import("./pages/CalendarCallback"));
 const InviteAccept = lazy(() => import("./pages/InviteAccept"));
 const Settings = lazy(() => import("./pages/Settings"));
@@ -68,6 +69,7 @@ function App() {
                       element={<Navigate to="/leads" replace />}
                     />
                     <Route path="/rewind" element={<Rewind />} />
+                    <Route path="/notes" element={<Notes />} />
                     <Route
                       path="/calendar/callback"
                       element={<CalendarCallback />}
