@@ -9,9 +9,14 @@
     "install:all": "cd backend && npm install && cd ../frontend && npm install",
     "build": "cd frontend && npm run build",
     "lint": "cd frontend && npm run lint",
-    "setup": "setup.bat"
+    "setup": "setup.bat",
+    "db:migrate": "node scripts/db-apply.mjs",
+    "db:seed": "node scripts/db-seed.mjs",
+    "db:setup": "node scripts/db-apply.mjs && node scripts/db-seed.mjs"
   },
   "dependencies": {
-    "concurrently": "^8.2.2"
+    "concurrently": "^8.2.2",
+    "dotenv": "^17.4.2",
+    "pg": "^8.22.0"
   }
 }

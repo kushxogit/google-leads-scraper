@@ -33,11 +33,20 @@ if not exist frontend\.env.local (
 )
 echo.
 
-echo [5/5] Installing Playwright browsers for the local scraper...
+echo [5/6] Installing Playwright browsers for the local scraper...
 cd backend
 call npx playwright install
 if errorlevel 1 goto :install_failed
 cd ..
+echo.
+
+echo [6/6] Applying database migrations, seeding, and reloading PostgREST schema cache...
+if exist .env.supabase.local (
+  call npm run db:setup
+) else (
+  echo .env.supabase.local not found. Skipping automatic migration run.
+  echo To run migrations automatically, create .env.supabase.local with SUPABASE_DB_URL.
+)
 echo.
 
 echo ===================================================

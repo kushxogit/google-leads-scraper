@@ -11,12 +11,15 @@ import {
 } from "date-fns";
 import {
   CheckCircle2,
+  CalendarClock,
   ChevronLeft,
   ChevronRight,
   Clock3,
+  Inbox,
   MessageSquare,
   Plus,
   RotateCcw,
+  Sparkles,
   Trash2,
 } from "lucide-react";
 import TaskModal from "../components/TaskModal";
@@ -99,6 +102,13 @@ export default function Rewind() {
   );
   const unplanned = filtered.filter(
     (task) => !task.scheduled_start && task.status !== "done",
+  );
+  const timeSuggestions = useMemo(
+    () =>
+      unplanned
+        .map((task) => ({ task, suggestion: inferTaskTime(task, cursor) }))
+        .filter((item) => item.suggestion),
+    [cursor, unplanned],
   );
   const days =
     view === "week"
@@ -244,32 +254,26 @@ export default function Rewind() {
           ))}
         </select>
       </section>
-      <div className="grid gap-4 xl:grid-cols-[280px_1fr]">
-        <Unplanned tasks={unplanned} api={taskApi} onOpen={openTask} />
-        {view === "team" ? (
-          <TeamView
-            tasks={filtered}
-            members={taskApi.members}
-            onOpen={openTask}
-          />
-        ) : view === "map" ? (
-          <DayMap
-            day={cursor}
-            tasks={planned}
-            events={calendar.data ?? []}
-            members={taskApi.members}
-            onOpen={openTask}
-          />
-        ) : (
-          <Timeline
-            days={days}
-            tasks={planned}
-            events={calendar.data ?? []}
-            onDrop={schedule}
-            onOpen={openTask}
-          />
-        )}
-      </div>
+      {view === "map" ? (
+        <PlanDay
+          day={cursor}
+          tasks={planned}
+          events={calendar.data ?? []}
+          unplanned={unplanned}
+          suggestions={timeSuggestions}
+          onOpen={openTask}
+          onSchedule={schedule}
+        />
+      ) : (
+        <div className="grid gap-4 xl:grid-cols-[280px_1fr]">
+          <Unplanned tasks={unplanned} api={taskApi} onOpen={openTask} />
+          {view === "team" ? (
+            <TeamView tasks={filtered} members={taskApi.members} onOpen={openTask} />
+          ) : (
+            <Timeline days={days} tasks={planned} events={calendar.data ?? []} onDrop={schedule} onOpen={openTask} />
+          )}
+        </div>
+      )}
       <TaskModal
         open={modalOpen}
         onClose={() => {
@@ -302,6 +306,8 @@ export default function Rewind() {
   );
 }
 
+// The new PlanDay surface replaces this legacy branch-based presentation.
+// oxlint-disable-next-line no-unused-vars
 function DayMap({ day, tasks, events, members, onOpen }) {
   const entries = [
     ...events.map((event) => ({
@@ -472,6 +478,144 @@ function DayBubble({ entry, members, onOpen }) {
       {content}
     </button>
   );
+}
+
+function PlanDay({
+  day,
+  tasks,
+  events,
+  unplanned,
+  suggestions,
+  onOpen,
+  onSchedule,
+}) {
+  const entries = [
+    ...events.map((event) => ({
+      id: `event-${event.id}`,
+      type: "event",
+      title: event.display_title,
+      startsAt: event.starts_at,
+      endsAt: event.ends_at,
+      category: "meeting",
+    })),
+    ...tasks.map((task) => ({
+      id: task.id,
+      type: "task",
+      title: task.title,
+      startsAt: task.scheduled_start,
+      endsAt: task.scheduled_end,
+      category: task.category,
+      task,
+    })),
+  ]
+    .filter((entry) => isSameDay(new Date(entry.startsAt), day))
+    .sort((a, b) => new Date(a.startsAt) - new Date(b.startsAt));
+  const reference = isSameDay(day, new Date()) ? new Date() : startOfDay(day);
+  const nextIndex = entries.findIndex(
+    (entry) => new Date(entry.endsAt || entry.startsAt) >= reference,
+  );
+  const current = nextIndex > 0 ? entries.slice(0, nextIndex) : [];
+  const upcoming = nextIndex >= 0 ? entries.slice(nextIndex, nextIndex + 3) : [];
+  const later = nextIndex >= 0 ? entries.slice(nextIndex + 3) : entries;
+  const minutes = entries.reduce(
+    (total, entry) =>
+      total +
+      (entry.endsAt
+        ? Math.max(30, (new Date(entry.endsAt) - new Date(entry.startsAt)) / 60000)
+        : 60),
+    0,
+  );
+  return (
+    <section className="panel overflow-hidden">
+      <div className="grid min-w-0 lg:grid-cols-[minmax(0,1fr)_320px]">
+        <main className="min-w-0 p-4 sm:p-6 lg:p-7">
+          <div className="flex flex-col gap-4 border-b border-zinc-100 pb-5 sm:flex-row sm:items-start sm:justify-between">
+            <div>
+              <p className="eyebrow">Daily agenda</p>
+              <h2 className="mt-1 text-2xl font-extrabold tracking-[-.04em] sm:text-3xl">Plan your day</h2>
+              <p className="mt-2 max-w-md text-sm text-zinc-500">A calm order of work, with the next commitment always clear.</p>
+            </div>
+            <div className="flex items-center gap-3 rounded-2xl bg-violet-50 px-3 py-2 text-xs font-extrabold text-violet-700">
+              <CheckCircle2 size={16} /> {entries.length} planned
+              <span className="h-4 w-px bg-violet-200" /> {formatDuration(minutes)} scheduled
+            </div>
+          </div>
+          <div className="mt-5 space-y-7">
+            <AgendaSection label="Now" detail={isSameDay(day, new Date()) ? format(new Date(), "h:mm a") : format(day, "EEEE")} entries={current} onOpen={onOpen} empty="Nothing before your next commitment." />
+            <AgendaSection label="Up next" detail="The work that needs your attention first" entries={upcoming} onOpen={onOpen} empty="Your next task will appear here." />
+            <AgendaSection label="Later" detail="Keep the rest of the day light and intentional" entries={later} onOpen={onOpen} empty="No more timed work for this day." />
+            <div className="rounded-2xl border border-dashed border-violet-200 bg-violet-50/40 px-4 py-3 text-sm text-violet-800"><span className="font-extrabold">Open space.</span> Schedule a task from your inbox when you are ready to protect time for it.</div>
+          </div>
+        </main>
+        <aside className="border-t border-zinc-100 bg-zinc-50/60 p-4 sm:p-6 lg:border-l lg:border-t-0">
+          <div className="flex items-center gap-3">
+            <span className="grid h-10 w-10 place-items-center rounded-2xl bg-white text-violet-600 shadow-sm"><Inbox size={18} /></span>
+            <div><p className="font-extrabold">Inbox</p><p className="text-xs text-zinc-400">Unscheduled tasks and notes</p></div>
+            <span className="mono ml-auto text-xs text-zinc-400">{unplanned.length}</span>
+          </div>
+          {suggestions.length > 0 && <div className="mt-5 rounded-2xl border border-violet-100 bg-white p-3"><div className="flex items-center gap-2 text-xs font-extrabold text-violet-700"><Sparkles size={15} /> Time found in your tasks</div><p className="mt-1 text-xs leading-5 text-zinc-500">Review a suggestion, then add it to your day in one tap.</p></div>}
+          <div className="mt-3 space-y-3">
+            {unplanned.map((task) => {
+              const suggestion = suggestions.find((item) => item.task.id === task.id)?.suggestion;
+              const category = TASK_CATEGORIES[task.category] ?? TASK_CATEGORIES.development;
+              return <article key={task.id} className="rounded-2xl border border-zinc-200 bg-white p-3 shadow-sm">
+                <button onClick={() => onOpen(task)} className="w-full text-left"><div className="flex items-center gap-2"><span className={`h-2 w-2 rounded-full ${category.dot}`} /><span className="text-[10px] font-extrabold uppercase tracking-[.12em] text-zinc-400">{category.label}</span></div><p className="mt-2 line-clamp-2 text-sm font-extrabold leading-5 text-zinc-900">{task.title}</p></button>
+                {suggestion ? <div className="mt-3 flex items-center justify-between gap-2 rounded-xl bg-violet-50 px-2.5 py-2"><span className="min-w-0 text-xs font-bold text-violet-800"><CalendarClock className="mr-1 inline" size={13} />{suggestion.label}</span><button onClick={() => onSchedule(task.id, suggestion.day, suggestion.hour)} className="shrink-0 rounded-lg bg-violet-600 px-2.5 py-1.5 text-xs font-extrabold text-white hover:bg-violet-700">Schedule</button></div> : <button onClick={() => onOpen(task)} className="mt-3 text-xs font-extrabold text-violet-700 hover:text-violet-900">Pick a time</button>}
+              </article>;
+            })}
+            {!unplanned.length && <div className="rounded-2xl border border-dashed border-zinc-200 p-5 text-center text-sm text-zinc-400">Everything has a time.</div>}
+          </div>
+        </aside>
+      </div>
+    </section>
+  );
+}
+
+function AgendaSection({ label, detail, entries, onOpen, empty }) {
+  return <section><div className="flex items-baseline justify-between gap-3"><div><p className="text-base font-extrabold text-zinc-950">{label}</p><p className="mt-0.5 text-xs text-zinc-400">{detail}</p></div><span className="mono text-xs text-zinc-400">{entries.length}</span></div><div className="mt-3 space-y-2">{entries.map((entry) => <AgendaRow key={entry.id} entry={entry} onOpen={onOpen} />)}{!entries.length && <div className="rounded-2xl border border-dashed border-zinc-200 px-4 py-3 text-sm text-zinc-400">{empty}</div>}</div></section>;
+}
+
+function AgendaRow({ entry, onOpen }) {
+  const category = TASK_CATEGORIES[entry.category] ?? TASK_CATEGORIES.meeting;
+  const start = new Date(entry.startsAt);
+  const end = entry.endsAt ? new Date(entry.endsAt) : null;
+  const content = <><div className="min-w-0 flex-1"><div className="flex items-center gap-2"><span className={`h-2 w-2 rounded-full ${entry.type === "event" ? "bg-rose-500" : category.dot}`} /><span className="text-[10px] font-extrabold uppercase tracking-[.11em] text-zinc-400">{entry.type === "event" ? "Calendar" : category.label}</span></div><p className="mt-1 truncate text-sm font-extrabold text-zinc-900">{entry.title}</p></div><div className="shrink-0 text-right"><p className="text-xs font-extrabold text-zinc-800">{format(start, "h:mm a")}</p><p className="mt-0.5 text-[11px] text-zinc-400">{end ? formatDuration((end - start) / 60000) : "60 min"}</p></div></>;
+  if (entry.type === "event") return <article className="flex items-center gap-3 rounded-2xl border border-rose-100 bg-rose-50/70 px-3 py-3">{content}</article>;
+  return <button onClick={() => onOpen(entry.task)} className={`flex w-full items-center gap-3 rounded-2xl border px-3 py-3 text-left transition hover:-translate-y-0.5 hover:shadow-md ${category.card}`}>{content}</button>;
+}
+
+function formatDuration(minutes) {
+  const rounded = Math.max(0, Math.round(minutes));
+  const hours = Math.floor(rounded / 60);
+  const remainder = rounded % 60;
+  return `${hours ? `${hours}h ` : ""}${remainder ? `${remainder}m` : ""}`.trim() || "0m";
+}
+
+function inferTaskTime(task, fallbackDay) {
+  const text = `${task.title || ""} ${task.description || ""}`.toLowerCase();
+  let day = task.due_at ? startOfDay(new Date(task.due_at)) : startOfDay(fallbackDay);
+  let foundDate = Boolean(task.due_at);
+  if (/\btomorrow\b/.test(text)) { day = addDays(startOfDay(fallbackDay), 1); foundDate = true; }
+  if (/\btoday\b/.test(text)) foundDate = true;
+  const dateMatch = text.match(/\b(?:on\s+)?(\d{1,2})(?:st|nd|rd|th)?\s*(?:of\s+)?(january|february|march|april|may|june|july|august|september|october|november|december|jan|feb|mar|apr|jun|jul|aug|sep|sept|oct|nov|dec)\b/);
+  if (dateMatch) {
+    const month = ["jan", "feb", "mar", "apr", "may", "jun", "jul", "aug", "sep", "oct", "nov", "dec"].findIndex((item) => dateMatch[2].startsWith(item));
+    day = new Date(fallbackDay.getFullYear(), month, Number(dateMatch[1]));
+    if (day < startOfDay(fallbackDay) && !task.due_at) day.setFullYear(day.getFullYear() + 1);
+    foundDate = true;
+  }
+  const timeMatch = text.match(/\b(?:at\s*)?(\d{1,2})(?::(\d{2}))?\s*(a\.?m\.?|p\.?m\.?)\b/);
+  let hour = 10;
+  let minute = 0;
+  let foundTime = false;
+  if (timeMatch) { hour = Number(timeMatch[1]) % 12 + (timeMatch[3].startsWith("p") ? 12 : 0); minute = Number(timeMatch[2] || 0); foundTime = true; }
+  else if (/\bmorning\b/.test(text)) { hour = 9; foundTime = true; }
+  else if (/\bafternoon\b/.test(text)) { hour = 14; foundTime = true; }
+  else if (/\bevening\b/.test(text)) { hour = 18; foundTime = true; }
+  if (!foundDate && !foundTime) return null;
+  const date = new Date(day);
+  date.setHours(hour, minute, 0, 0);
+  return { day: date, hour: hour + minute / 60, label: `${format(date, "EEE, MMM d · h:mm a")}${foundTime ? "" : " · suggested"}` };
 }
 
 function Unplanned({ tasks, api, onOpen }) {

@@ -84,4 +84,6 @@ begin
 end; $$;
 grant execute on function public.bulk_update_leads(uuid, uuid[], text, uuid, boolean) to authenticated;
 
+notify pgrst, 'reload schema';
+
 commit;

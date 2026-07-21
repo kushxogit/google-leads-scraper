@@ -184,4 +184,6 @@ do $$ begin
   if not exists (select 1 from pg_publication_tables where pubname='supabase_realtime' and schemaname='public' and tablename='workspace_note_comments') then alter publication supabase_realtime add table public.workspace_note_comments; end if;
 end $$;
 
+notify pgrst, 'reload schema';
+
 commit;

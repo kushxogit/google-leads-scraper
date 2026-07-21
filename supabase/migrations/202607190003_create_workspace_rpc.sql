@@ -26,4 +26,6 @@ $$;
 
 grant execute on function public.create_team_workspace(text) to authenticated;
 
+notify pgrst, 'reload schema';
+
 commit;

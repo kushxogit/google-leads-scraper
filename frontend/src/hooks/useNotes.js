@@ -126,6 +126,9 @@ export function useWorkspaceNotes() {
         .filter(([key]) => allowed.includes(key))
         .map(([key, value]) => [key, typeof value === "string" && ["title", "body"].includes(key) ? value.trim() : value]),
     );
+    if (typeof payload.title === "string") {
+      payload.title = payload.title || "Untitled note";
+    }
     payload.updated_by = user.id;
     if (Object.keys(payload).length > 1)
       await result(
@@ -150,7 +153,7 @@ export function useWorkspaceNotes() {
   };
 
   const createLine = async (noteId, body) => {
-    const note = query.data?.find((item) => item.id === noteId);
+    const note = (query.data ?? []).find((item) => item.id === noteId);
     if (!body?.trim()) return null;
     const line = await result(
       supabase
@@ -173,7 +176,10 @@ export function useWorkspaceNotes() {
     const payload = Object.fromEntries(
       Object.entries(changes).filter(([key]) => ["body", "is_done", "line_order"].includes(key)),
     );
-    if (typeof payload.body === "string") payload.body = payload.body.trim();
+    if (typeof payload.body === "string") {
+      payload.body = payload.body.trim();
+      if (!payload.body) return; // Ignore empty line updates
+    }
     await result(
       supabase
         .from("workspace_note_lines")
