@@ -1,9 +1,15 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 
-const cors = { 'Access-Control-Allow-Origin': '*', 'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type' };
+// This endpoint is intended for an authenticated server or scheduler, not a
+// browser. Avoid advertising cross-origin browser access.
+const cors = { 'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type' };
 
 Deno.serve(async (request) => {
   if (request.method === 'OPTIONS') return new Response('ok', { headers: cors });
+  const invokeSecret = Deno.env.get('WEBHOOK_INVOKE_SECRET');
+  if (!invokeSecret || request.headers.get('x-webhook-invoke-secret') !== invokeSecret) {
+    return Response.json({ error: 'Unauthorized' }, { status: 401, headers: cors });
+  }
   const webhookUrl = Deno.env.get('INTEGRATION_WEBHOOK_URL');
   if (!webhookUrl) return Response.json({ delivered: 0, enabled: false }, { headers: cors });
   const supabase = createClient(Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!);

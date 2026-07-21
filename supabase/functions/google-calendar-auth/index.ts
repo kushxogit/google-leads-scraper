@@ -1,7 +1,9 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 const cors = {
-  "Access-Control-Allow-Origin": "*",
+  // This function handles a user's Google credentials, so do not permit calls
+  // from arbitrary browser origins. APP_URL is the deployed frontend origin.
+  "Access-Control-Allow-Origin": Deno.env.get("APP_URL") ?? "",
   "Access-Control-Allow-Headers":
     "authorization, x-client-info, apikey, content-type",
   "Content-Type": "application/json",

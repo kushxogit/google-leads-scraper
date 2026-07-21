@@ -14,7 +14,9 @@ app.use(
   cors(
     frontendOrigins.length
       ? { origin: frontendOrigins, methods: ["GET", "POST", "OPTIONS"] }
-      : {},
+      : process.env.NODE_ENV === "production"
+        ? { origin: false, methods: ["GET", "POST", "OPTIONS"] }
+        : {},
   ),
 );
 app.use(express.json());
