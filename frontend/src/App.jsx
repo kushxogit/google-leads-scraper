@@ -112,11 +112,11 @@ function NotFound() {
         <p className="mt-3 text-sm text-zinc-500">
           Return to today’s work or open the pipeline.
         </p>
-        <div className="mt-6 flex justify-center gap-2">
-          <Link to="/" className="button-primary">
+        <div className="mt-6 flex flex-col gap-2 sm:flex-row sm:justify-center">
+          <Link to="/" className="button-primary w-full sm:w-auto">
             Go home
           </Link>
-          <Link to="/leads" className="button-secondary">
+          <Link to="/leads" className="button-secondary w-full sm:w-auto">
             Open pipeline
           </Link>
         </div>

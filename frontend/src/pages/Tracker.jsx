@@ -27,7 +27,47 @@ export default function Tracker() {
             {leads.length} records
           </span>
         </div>
-        <div className="overflow-x-auto">
+        <div className="divide-y divide-zinc-100 md:hidden">
+          {leads.map((lead) => (
+            <article key={lead.id} className="space-y-3 px-5 py-4">
+              <div>
+                <Link
+                  className="font-extrabold text-zinc-800 hover:text-violet-700"
+                  to={`/leads/${lead.id}`}
+                >
+                  {lead.business_name}
+                </Link>
+                <p className="mt-0.5 text-xs text-zinc-400">
+                  {lead.company || lead.niche || "Opportunity"}
+                </p>
+              </div>
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                <span className="text-xs text-zinc-500">
+                  {lead.phone || "â€”"} Â· Updated {new Date(lead.updated_at).toLocaleDateString()}
+                </span>
+                <select
+                  value={lead.status}
+                  onChange={(e) =>
+                    updateLead(lead.id, { status: e.target.value })
+                  }
+                  className="control py-1.5 text-xs"
+                  aria-label={`Change stage for ${lead.business_name}`}
+                >
+                  <option>new</option>
+                  <option>contacted</option>
+                  <option>qualified</option>
+                  <option>proposal</option>
+                  <option>won</option>
+                  <option>lost</option>
+                </select>
+              </div>
+            </article>
+          ))}
+          {!leads.length && (
+            <p className="p-10 text-center text-zinc-400">No opportunities yet.</p>
+          )}
+        </div>
+        <div className="hidden overflow-x-auto md:block">
           <table className="w-full min-w-[680px] text-left text-sm">
             <thead className="bg-zinc-50 text-[10px] font-extrabold uppercase tracking-[.14em] text-zinc-400">
               <tr>

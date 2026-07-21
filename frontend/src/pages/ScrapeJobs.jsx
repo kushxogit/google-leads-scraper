@@ -95,7 +95,7 @@ export default function ScrapeJobs() {
   };
   return (
     <div className="mx-auto max-w-7xl space-y-5">
-      <header className="rounded-[30px] bg-[#171719] p-7 text-white shadow-[0_20px_50px_rgba(43,31,70,.18)]">
+      <header className="rounded-[30px] bg-[#171719] p-5 text-white shadow-[0_20px_50px_rgba(43,31,70,.18)] sm:p-7">
         <div className="flex items-center gap-3">
           <span className="grid h-11 w-11 place-items-center rounded-2xl liquid-button">
             <Radar size={20} />
@@ -125,7 +125,7 @@ export default function ScrapeJobs() {
               onChange={(query) => setForm({ ...form, query })}
               placeholder="Dentists in Jaipur"
             />
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid gap-3 sm:grid-cols-2">
               <Input
                 label="Industry"
                 value={form.niche}
@@ -139,7 +139,7 @@ export default function ScrapeJobs() {
                 placeholder="Jaipur"
               />
             </div>
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid gap-3 sm:grid-cols-2">
               <label className="text-xs font-extrabold uppercase tracking-[.12em] text-zinc-400">
                 Max leads
                 <input
@@ -206,7 +206,49 @@ export default function ScrapeJobs() {
               {jobs.length} jobs
             </span>
           </div>
-          <div className="overflow-x-auto">
+          <div className="divide-y divide-zinc-100 md:hidden">
+            {jobs.map((job) => (
+              <article key={job.id} className="space-y-3 px-5 py-4">
+                <div className="flex items-start justify-between gap-3">
+                  <div className="min-w-0">
+                    <p className="truncate font-extrabold text-zinc-800">
+                      {job.query}
+                    </p>
+                    <p className="mt-1 text-xs text-zinc-400">
+                      {job.niche} {job.area && `Â· ${job.area}`} Â· Target {job.lead_limit}
+                    </p>
+                  </div>
+                  <Status status={job.status} />
+                </div>
+                <div className="flex items-center justify-between gap-3 text-xs">
+                  <span className="text-zinc-500">
+                    Found <b className="text-zinc-800">{job.found_count}</b> Â· Saved{" "}
+                    <b className="text-emerald-600">{job.saved_count}</b>
+                  </span>
+                  <span className="shrink-0 text-zinc-400">
+                    {new Date(job.created_at + "Z").toLocaleTimeString([], {
+                      hour: "2-digit",
+                      minute: "2-digit",
+                    })}
+                  </span>
+                </div>
+                {job.error_message && (
+                  <p className="text-xs text-rose-500">{job.error_message}</p>
+                )}
+                {job.status === "completed" && job.saved_count > 0 && (
+                  <Link to="/leads" className="inline-flex text-xs font-extrabold text-violet-600">
+                    View saved leads â†’
+                  </Link>
+                )}
+              </article>
+            ))}
+            {!jobs.length && (
+              <p className="p-10 text-center text-sm text-zinc-400">
+                Your scans will appear here.
+              </p>
+            )}
+          </div>
+          <div className="hidden overflow-x-auto md:block">
             <table className="min-w-[730px] w-full text-left text-sm">
               <thead className="bg-zinc-50 text-[10px] uppercase tracking-[.14em] text-zinc-400">
                 <tr>

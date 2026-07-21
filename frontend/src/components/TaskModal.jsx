@@ -110,7 +110,7 @@ export default function TaskModal({
   };
   return (
     <div
-      className="fixed inset-0 z-[80] grid place-items-center bg-zinc-950/35 p-4 backdrop-blur-sm"
+      className="fixed inset-0 z-[80] grid place-items-center bg-zinc-950/35 p-3 backdrop-blur-sm sm:p-4"
       onMouseDown={onClose}
     >
       <form
@@ -119,7 +119,7 @@ export default function TaskModal({
         aria-labelledby="task-modal-title"
         onSubmit={submit}
         onMouseDown={(event) => event.stopPropagation()}
-        className="panel max-h-[92vh] w-full max-w-2xl overflow-y-auto bg-white p-5 sm:p-7"
+        className="panel max-h-[calc(100dvh-1.5rem)] w-full max-w-2xl overflow-y-auto bg-white p-5 sm:max-h-[92vh] sm:p-7"
       >
         <header className="flex items-start justify-between">
           <div>

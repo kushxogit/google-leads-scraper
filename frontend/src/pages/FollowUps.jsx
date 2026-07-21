@@ -13,7 +13,7 @@ export default function FollowUps() {
     return <div className="panel p-8 text-zinc-500">Loading follow-ups…</div>;
   return (
     <div className="mx-auto max-w-4xl space-y-5">
-      <section className="rounded-[30px] bg-gradient-to-br from-amber-100 via-white to-rose-100 p-7 shadow-[0_16px_45px_rgba(155,95,30,.10)]">
+      <section className="rounded-[30px] bg-gradient-to-br from-amber-100 via-white to-rose-100 p-5 shadow-[0_16px_45px_rgba(155,95,30,.10)] sm:p-7">
         <span className="grid h-10 w-10 place-items-center rounded-2xl bg-white text-amber-600 shadow-sm">
           <CalendarClock size={18} />
         </span>

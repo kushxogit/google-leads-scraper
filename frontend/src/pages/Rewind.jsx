@@ -182,7 +182,7 @@ export default function Rewind() {
         </div>
       </header>
       <section className="panel flex flex-wrap items-center gap-2 p-3">
-        <div className="flex rounded-2xl bg-zinc-100 p-1">
+        <div className="scrollbar-hide flex w-full overflow-x-auto rounded-2xl bg-zinc-100 p-1 sm:w-auto">
           {[
             ["map", "Day map"],
             ["today", "Timeline"],
@@ -192,13 +192,13 @@ export default function Rewind() {
             <button
               key={key}
               onClick={() => setView(key)}
-              className={`rounded-xl px-3 py-2 text-xs font-extrabold ${view === key ? "bg-white text-violet-700 shadow-sm" : "text-zinc-500"}`}
+              className={`shrink-0 rounded-xl px-3 py-2 text-xs font-extrabold ${view === key ? "bg-white text-violet-700 shadow-sm" : "text-zinc-500"}`}
             >
               {label}
             </button>
           ))}
         </div>
-        <div className="ml-1 flex items-center gap-1">
+        <div className="flex items-center gap-1 sm:ml-1">
           <button
             aria-label="Previous"
             onClick={() =>
@@ -222,7 +222,7 @@ export default function Rewind() {
             <ChevronRight size={17} />
           </button>
         </div>
-        <p className="min-w-[170px] text-sm font-extrabold">
+        <p className="order-last w-full text-sm font-extrabold sm:order-none sm:w-auto sm:min-w-[170px]">
           {view === "week"
             ? `${format(range.start, "MMM d")} – ${format(range.end, "MMM d, yyyy")}`
             : format(cursor, "EEEE, MMMM d")}
@@ -230,7 +230,7 @@ export default function Rewind() {
         <select
           value={owner}
           onChange={(e) => setOwner(e.target.value)}
-          className="control ml-auto py-2 text-xs"
+          className="control flex-1 py-2 text-xs sm:ml-auto sm:flex-none"
         >
           <option value="all">Everyone</option>
           {taskApi.members.map((member) => (
@@ -244,7 +244,7 @@ export default function Rewind() {
         <select
           value={category}
           onChange={(e) => setCategory(e.target.value)}
-          className="control py-2 text-xs"
+          className="control flex-1 py-2 text-xs sm:flex-none"
         >
           <option value="all">All categories</option>
           {Object.entries(TASK_CATEGORIES).map(([key, item]) => (
@@ -881,7 +881,7 @@ function TaskDrawer({ task, members, api, onClose, onEdit }) {
         aria-modal="true"
         aria-labelledby="task-drawer-title"
         onClick={(e) => e.stopPropagation()}
-        className="absolute bottom-0 right-0 top-0 w-full max-w-md overflow-y-auto bg-white p-6 shadow-2xl"
+        className="absolute bottom-0 right-0 top-0 w-full max-w-md overflow-y-auto bg-white p-4 shadow-2xl sm:p-6"
       >
         <button onClick={onClose} className="text-sm font-bold text-zinc-400">
           Close
@@ -893,7 +893,7 @@ function TaskDrawer({ task, members, api, onClose, onEdit }) {
         </div>
         <h2
           id="task-drawer-title"
-          className="mt-3 text-3xl font-extrabold tracking-[-.05em]"
+          className="mt-3 text-2xl font-extrabold tracking-[-.05em] sm:text-3xl"
         >
           {task.title}
         </h2>
@@ -932,24 +932,24 @@ function TaskDrawer({ task, members, api, onClose, onEdit }) {
               : `Due ${format(new Date(task.due_at), "MMM d · h:mm a")}`}
           </div>
         )}
-        <div className="mt-6 flex flex-wrap gap-2">
+        <div className="mt-6 grid grid-cols-2 gap-2 sm:flex sm:flex-wrap">
           <button
             onClick={() =>
               api.updateTask(task.id, {
                 status: task.status === "done" ? "planned" : "done",
               })
             }
-            className="button-primary"
+            className="button-primary w-full sm:w-auto"
           >
             <CheckCircle2 size={16} />
             {task.status === "done" ? "Reopen" : "Complete"}
           </button>
-          <button onClick={() => onEdit(task)} className="button-secondary">
+          <button onClick={() => onEdit(task)} className="button-secondary w-full sm:w-auto">
             Edit
           </button>
           <button
             onClick={remove}
-            className="button-secondary ml-auto text-rose-600"
+            className="button-secondary col-span-2 w-full text-rose-600 sm:ml-auto sm:w-auto"
           >
             <Trash2 size={15} /> Delete
           </button>

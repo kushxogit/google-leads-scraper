@@ -221,7 +221,7 @@ export default function LeadDetail() {
             <p className="text-[10px] font-extrabold uppercase tracking-[.18em] text-violet-200">
               Opportunity profile
             </p>
-            <h1 className="mt-3 truncate text-4xl font-extrabold tracking-[-.06em] sm:text-5xl">
+            <h1 className="mt-3 truncate text-3xl font-extrabold tracking-[-.06em] sm:text-5xl">
               {current.business_name}
             </h1>
             <p className="mt-3 text-sm text-zinc-300">
@@ -233,14 +233,14 @@ export default function LeadDetail() {
           <div className="flex flex-wrap gap-2">
             <button
               onClick={openNewTask}
-              className="inline-flex items-center gap-2 rounded-2xl border border-white/[.18] bg-white/[.1] px-4 py-2.5 text-sm font-extrabold"
+              className="inline-flex flex-1 items-center justify-center gap-2 rounded-2xl border border-white/[.18] bg-white/[.1] px-4 py-2.5 text-sm font-extrabold sm:flex-none"
             >
               <CheckSquare2 size={16} /> Add task
             </button>
             <select
               value={current.status}
               onChange={(e) => update({ status: e.target.value })}
-              className="rounded-2xl border border-white/[.15] bg-white/[.1] px-3 py-2.5 text-sm font-bold text-white outline-none"
+              className="min-w-0 flex-1 rounded-2xl border border-white/[.15] bg-white/[.1] px-3 py-2.5 text-sm font-bold text-white outline-none sm:flex-none"
             >
               <option className="text-zinc-900">{current.status}</option>
               {PIPELINE_STATUSES.filter((s) => s !== current.status).map(
@@ -254,7 +254,7 @@ export default function LeadDetail() {
             {current.phone && (
               <button
                 onClick={whatsapp}
-                className="inline-flex items-center gap-2 rounded-2xl bg-white px-4 py-2.5 text-sm font-extrabold text-zinc-950"
+                className="inline-flex flex-1 items-center justify-center gap-2 rounded-2xl bg-white px-4 py-2.5 text-sm font-extrabold text-zinc-950 sm:flex-none"
               >
                 <MessageCircle size={16} /> WhatsApp
               </button>

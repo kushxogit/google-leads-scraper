@@ -49,9 +49,9 @@ export default function Layout({ children }) {
     return () => window.removeEventListener("keydown", listener);
   }, []);
   return (
-    <div className="app-surface flex h-screen overflow-hidden p-0 md:p-3">
+    <div className="app-surface flex h-dvh min-h-dvh overflow-hidden p-0 md:p-3">
       <aside
-        className={`fixed inset-y-3 left-3 z-50 flex w-[260px] flex-col rounded-[28px] bg-[#171719] p-3 text-white shadow-[0_24px_80px_rgba(23,18,38,.30)] transition-transform md:static md:translate-x-0 ${mobileOpen ? "translate-x-0" : "-translate-x-[110%]"}`}
+        className={`fixed inset-y-3 left-3 z-50 flex w-[min(300px,calc(100vw-24px))] flex-col rounded-[28px] bg-[#171719] p-3 text-white shadow-[0_24px_80px_rgba(23,18,38,.30)] transition-transform md:static md:w-[260px] md:translate-x-0 ${mobileOpen ? "translate-x-0" : "-translate-x-[110%]"}`}
       >
         <div className="flex h-14 items-center justify-between px-2">
           <div className="flex items-center gap-2.5">
@@ -115,7 +115,7 @@ export default function Layout({ children }) {
         />
       )}
       <main className="relative z-10 flex min-w-0 flex-1 flex-col overflow-hidden">
-        <header className="flex h-[76px] shrink-0 items-center justify-between px-5 md:px-7">
+        <header className="flex h-[68px] shrink-0 items-center justify-between px-3 sm:h-[76px] sm:px-5 md:px-7">
           <div className="flex items-center gap-3">
             <button
               onClick={() => setMobileOpen(true)}
@@ -208,7 +208,7 @@ export default function Layout({ children }) {
             </div>
           </div>
         </header>
-        <div className="scrollbar-thin relative flex-1 overflow-y-auto px-4 pb-6 md:px-6">
+        <div className="scrollbar-thin relative flex-1 overflow-y-auto px-3 pb-[max(1.5rem,env(safe-area-inset-bottom))] sm:px-4 md:px-6">
           {children}
         </div>
       </main>

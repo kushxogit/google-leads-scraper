@@ -72,7 +72,7 @@ export default function FeedbackProvider({ children }) {
       </div>
       {dialog && (
         <div
-          className="fixed inset-0 z-[115] grid place-items-center bg-zinc-950/35 p-4 backdrop-blur-sm"
+          className="fixed inset-0 z-[115] grid place-items-center bg-zinc-950/35 p-3 backdrop-blur-sm sm:p-4"
           onMouseDown={() => answer(false)}
         >
           <section
@@ -80,7 +80,7 @@ export default function FeedbackProvider({ children }) {
             aria-modal="true"
             aria-labelledby="confirm-title"
             onMouseDown={(event) => event.stopPropagation()}
-            className="panel w-full max-w-md bg-white p-6"
+            className="panel max-h-[calc(100dvh-1.5rem)] w-full max-w-md overflow-y-auto bg-white p-5 sm:p-6"
           >
             <span
               className={`grid h-11 w-11 place-items-center rounded-2xl ${dialog.danger ? "bg-rose-100 text-rose-600" : "bg-violet-100 text-violet-600"}`}
@@ -95,7 +95,7 @@ export default function FeedbackProvider({ children }) {
                 {dialog.description}
               </p>
             )}
-            <div className="mt-6 flex justify-end gap-2">
+            <div className="mt-6 flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
               <button
                 autoFocus
                 onClick={() => answer(false)}
@@ -107,7 +107,7 @@ export default function FeedbackProvider({ children }) {
                 onClick={() => answer(true)}
                 className={
                   dialog.danger
-                    ? "inline-flex items-center justify-center rounded-2xl bg-rose-600 px-4 py-2.5 text-sm font-bold text-white"
+                    ? "inline-flex w-full items-center justify-center rounded-2xl bg-rose-600 px-4 py-2.5 text-sm font-bold text-white sm:w-auto"
                     : "button-primary"
                 }
               >

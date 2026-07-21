@@ -93,8 +93,8 @@ export default function CsvImportModal({
   };
   if (!open) return null;
   return (
-    <div className="fixed inset-0 z-[80] grid place-items-center bg-zinc-950/35 p-4 backdrop-blur-sm">
-      <section className="panel max-h-[92vh] w-full max-w-2xl overflow-y-auto bg-white p-5 sm:p-7">
+    <div className="fixed inset-0 z-[80] grid place-items-center bg-zinc-950/35 p-3 backdrop-blur-sm sm:p-4">
+      <section className="panel max-h-[calc(100dvh-1.5rem)] w-full max-w-2xl overflow-y-auto bg-white p-5 sm:max-h-[92vh] sm:p-7">
         <header className="flex items-start justify-between">
           <div>
             <p className="eyebrow">Pipeline</p>
@@ -153,8 +153,8 @@ export default function CsvImportModal({
               </button>
             </div>
             <div className="mt-4 overflow-hidden rounded-2xl border border-zinc-100">
-              <div className="max-h-52 overflow-y-auto">
-                <table className="w-full text-left text-xs">
+              <div className="scrollbar-thin max-h-52 overflow-auto">
+                <table className="min-w-[500px] w-full text-left text-xs">
                   <thead className="sticky top-0 bg-zinc-50 text-[10px] font-extrabold uppercase tracking-[.12em] text-zinc-400">
                     <tr>
                       <th className="px-3 py-2">Business</th>

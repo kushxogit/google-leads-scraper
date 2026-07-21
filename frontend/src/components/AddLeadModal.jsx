@@ -56,7 +56,7 @@ export default function AddLeadModal({ isOpen, onClose }) {
   };
   return (
     <div
-      className="fixed inset-0 z-[70] grid place-items-center bg-zinc-950/35 p-4 backdrop-blur-sm"
+      className="fixed inset-0 z-[70] grid place-items-center bg-zinc-950/35 p-3 backdrop-blur-sm sm:p-4"
       onMouseDown={onClose}
     >
       <form
@@ -65,9 +65,9 @@ export default function AddLeadModal({ isOpen, onClose }) {
         aria-labelledby="add-lead-title"
         onSubmit={submit}
         onMouseDown={(event) => event.stopPropagation()}
-        className="panel w-full max-w-xl overflow-hidden bg-white shadow-2xl"
+        className="panel max-h-[calc(100dvh-1.5rem)] w-full max-w-xl overflow-y-auto bg-white shadow-2xl"
       >
-        <header className="flex items-start justify-between border-b border-zinc-100 p-6">
+        <header className="flex items-start justify-between border-b border-zinc-100 p-4 sm:p-6">
           <div className="flex gap-3">
             <span className="grid h-10 w-10 place-items-center rounded-xl bg-violet-100 text-violet-600">
               <Sparkles size={18} />
@@ -90,7 +90,7 @@ export default function AddLeadModal({ isOpen, onClose }) {
             <X size={20} />
           </button>
         </header>
-        <div className="grid gap-4 p-6 sm:grid-cols-2">
+        <div className="grid gap-4 p-4 sm:grid-cols-2 sm:p-6">
           {fields.map(([key, label, required]) => (
             <label
               key={key}
@@ -122,11 +122,11 @@ export default function AddLeadModal({ isOpen, onClose }) {
             </select>
           </label>
         </div>
-        <footer className="flex justify-end gap-3 border-t border-zinc-100 bg-zinc-50/60 p-5">
-          <button type="button" onClick={onClose} className="button-secondary">
+        <footer className="flex flex-col-reverse gap-3 border-t border-zinc-100 bg-zinc-50/60 p-4 sm:flex-row sm:justify-end sm:p-5">
+          <button type="button" onClick={onClose} className="button-secondary w-full sm:w-auto">
             Cancel
           </button>
-          <button disabled={saving} className="button-primary">
+          <button disabled={saving} className="button-primary w-full sm:w-auto">
             {saving ? "Creating…" : "Create lead"}
           </button>
         </footer>

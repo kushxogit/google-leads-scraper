@@ -137,7 +137,7 @@ export default function LeadsTable() {
       </div>
     );
   return (
-    <div className="flex h-[calc(100vh-7.8rem)] min-h-[580px] flex-col gap-5">
+    <div className="flex min-h-0 flex-col gap-4 sm:gap-5 md:h-[calc(100vh-7.8rem)] md:min-h-[580px]">
       <header className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
         <div>
           <p className="eyebrow">Opportunity studio</p>
@@ -148,8 +148,8 @@ export default function LeadsTable() {
             A fluid view of every conversation in motion.
           </p>
         </div>
-        <div className="flex flex-wrap gap-2">
-          <label className="control flex min-w-[220px] items-center gap-2 py-2.5 shadow-sm">
+        <div className="flex w-full flex-wrap gap-2 sm:w-auto">
+          <label className="control flex w-full items-center gap-2 py-2.5 shadow-sm sm:min-w-[220px]">
             <Search size={16} className="text-zinc-400" />
             <input
               value={search}
@@ -168,13 +168,13 @@ export default function LeadsTable() {
           </button>
           <button
             onClick={() => setImportOpen(true)}
-            className="button-secondary"
+            className="button-secondary flex-1 sm:flex-none"
           >
             <Upload size={16} /> Import CSV
           </button>
           <button
             onClick={() => setAddOpen(true)}
-            className="button-primary liquid-button"
+            className="button-primary liquid-button flex-1 sm:flex-none"
           >
             <Plus size={17} /> New opportunity
           </button>
@@ -187,7 +187,7 @@ export default function LeadsTable() {
             <select
               value={ownerFilter}
               onChange={(event) => setOwnerFilter(event.target.value)}
-              className="control mt-1 block min-w-44 normal-case tracking-normal"
+              className="control mt-1 block w-full min-w-44 normal-case tracking-normal sm:w-auto"
             >
               <option value="all">Everyone</option>
               <option value="unassigned">Unassigned</option>
@@ -203,7 +203,7 @@ export default function LeadsTable() {
             <select
               value={workFilter}
               onChange={(event) => setWorkFilter(event.target.value)}
-              className="control mt-1 block min-w-44 normal-case tracking-normal"
+              className="control mt-1 block w-full min-w-44 normal-case tracking-normal sm:w-auto"
             >
               <option value="all">All work states</option>
               <option value="none">No next action</option>
@@ -219,7 +219,7 @@ export default function LeadsTable() {
               setOwnerFilter("all");
               setWorkFilter("all");
             }}
-            className="ml-auto pb-2 text-xs font-bold text-violet-600"
+            className="pb-2 text-xs font-bold text-violet-600 sm:ml-auto"
           >
             Clear filters
           </button>
@@ -268,13 +268,13 @@ export default function LeadsTable() {
           </button>
           <button
             onClick={() => setSelected([])}
-            className="ml-auto text-sm font-bold text-zinc-400 hover:text-zinc-900"
+            className="text-sm font-bold text-zinc-400 hover:text-zinc-900 sm:ml-auto"
           >
             Clear
           </button>
         </section>
       )}
-      <section className="scrollbar-thin flex min-h-0 flex-1 gap-3 overflow-x-auto pb-2">
+      <section className="scrollbar-thin flex min-h-0 flex-1 snap-x snap-mandatory gap-3 overflow-x-auto pb-4 md:pb-2">
         {PIPELINE_STATUSES.map((status) => (
           <Column
             key={status}
@@ -321,7 +321,7 @@ function Column({
 }) {
   return (
     <section
-      className="flex w-[290px] shrink-0 flex-col rounded-[26px] border border-white/80 bg-white/45 p-2.5 shadow-[0_10px_35px_rgba(55,45,85,.07)] backdrop-blur-md"
+      className="flex w-[calc(100vw-24px)] shrink-0 snap-center flex-col rounded-[26px] border border-white/80 bg-white/45 p-2.5 shadow-[0_10px_35px_rgba(55,45,85,.07)] backdrop-blur-md sm:w-[290px]"
       onDragOver={(e) => e.preventDefault()}
       onDrop={(e) => {
         const id = e.dataTransfer.getData("lead-id");
@@ -341,7 +341,7 @@ function Column({
           {leads.length}
         </span>
       </header>
-      <div className="scrollbar-thin min-h-0 flex-1 space-y-2 overflow-y-auto">
+      <div className="scrollbar-thin min-h-0 flex-1 space-y-2 overflow-visible md:overflow-y-auto">
         {leads.map((lead) => (
           <LeadCard
             key={lead.id}
@@ -379,7 +379,7 @@ function LeadCard({ lead, checked, onToggle, tasks, members, onAddTask }) {
     <article
       draggable
       onDragStart={(e) => e.dataTransfer.setData("lead-id", lead.id)}
-      className="group cursor-grab rounded-2xl border border-white bg-white/85 p-3.5 shadow-[0_4px_12px_rgba(57,46,89,.07)] transition hover:-translate-y-1 hover:shadow-[0_14px_28px_rgba(76,54,132,.16)] active:cursor-grabbing"
+      className="group rounded-2xl border border-white bg-white/85 p-3.5 shadow-[0_4px_12px_rgba(57,46,89,.07)] transition hover:-translate-y-1 hover:shadow-[0_14px_28px_rgba(76,54,132,.16)] md:cursor-grab md:active:cursor-grabbing"
     >
       <div className="flex items-start gap-2">
         <input
