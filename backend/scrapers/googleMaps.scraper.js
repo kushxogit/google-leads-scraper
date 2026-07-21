@@ -4,8 +4,18 @@ async function scrape({ query, niche, area, limit, headless, onLead, onLog }) {
   let browser;
   try {
     onLog(`Starting Google Maps scraper for query: "${query}"`);
-    browser = await chromium.launch({ headless: headless === 1 });
-    const context = await browser.newContext();
+    const remoteBrowserEndpoint = process.env.BROWSER_WS_ENDPOINT?.trim();
+    let context;
+
+    if (remoteBrowserEndpoint) {
+      onLog("Connecting to the managed Chromium browser...");
+      browser = await chromium.connectOverCDP(remoteBrowserEndpoint);
+      context = browser.contexts()[0] || (await browser.newContext());
+    } else {
+      browser = await chromium.launch({ headless: headless === 1 });
+      context = await browser.newContext();
+    }
+
     const page = await context.newPage();
 
     onLog(`Browser opened. Navigating to Google Maps...`);
