@@ -16,6 +16,7 @@
     "@tanstack/react-query-persist-client": "^5.101.2",
     "autoprefixer": "^10.5.2",
     "axios": "^1.18.1",
+    "chrono-node": "^2.10.1",
     "date-fns": "^4.4.0",
     "lucide-react": "^1.24.0",
     "papaparse": "^5.5.4",

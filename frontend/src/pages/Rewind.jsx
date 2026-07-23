@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
+import { parse as parseNaturalDate } from "chrono-node";
 import {
   addDays,
   endOfDay,
@@ -561,7 +562,7 @@ function PlanDay({
               const category = TASK_CATEGORIES[task.category] ?? TASK_CATEGORIES.development;
               return <article key={task.id} className="rounded-2xl border border-zinc-200 bg-white p-3 shadow-sm">
                 <button onClick={() => onOpen(task)} className="w-full text-left"><div className="flex items-center gap-2"><span className={`h-2 w-2 rounded-full ${category.dot}`} /><span className="text-[10px] font-extrabold uppercase tracking-[.12em] text-zinc-400">{category.label}</span></div><p className="mt-2 line-clamp-2 text-sm font-extrabold leading-5 text-zinc-900">{task.title}</p>{task.description && <p className="mt-1 line-clamp-2 text-xs leading-5 text-zinc-500">{task.description}</p>}{task.leads?.name && <p className="mt-2 truncate text-xs font-bold text-violet-700">Opportunity: {task.leads.name}</p>}</button>
-                {suggestion ? <div className="mt-3 flex items-center justify-between gap-2 rounded-xl bg-violet-50 px-2.5 py-2"><span className="min-w-0 text-xs font-bold text-violet-800"><CalendarClock className="mr-1 inline" size={13} />{suggestion.label}</span><button onClick={() => onSchedule(task.id, suggestion.day, suggestion.hour)} className="shrink-0 rounded-lg bg-violet-600 px-2.5 py-1.5 text-xs font-extrabold text-white hover:bg-violet-700">Use this time</button></div> : <div className="mt-3 grid grid-cols-2 gap-2"><button onClick={() => onSchedule(task.id, day, 9)} className="rounded-lg bg-violet-600 px-2 py-2 text-xs font-extrabold text-white">Today 9 AM</button><button onClick={() => onSchedule(task.id, addDays(day, 1), 9)} className="rounded-lg bg-violet-100 px-2 py-2 text-xs font-extrabold text-violet-700">Tomorrow 9 AM</button></div>}
+                {suggestion?.isClear ? <div className="mt-3 flex items-center justify-between gap-2 rounded-xl bg-violet-50 px-2.5 py-2"><span className="min-w-0 text-xs font-bold text-violet-800"><CalendarClock className="mr-1 inline" size={13} />{suggestion.label}</span><button onClick={() => onSchedule(task.id, suggestion.day, suggestion.hour)} className="shrink-0 rounded-lg bg-violet-600 px-2.5 py-1.5 text-xs font-extrabold text-white hover:bg-violet-700">Schedule now</button></div> : suggestion ? <div className="mt-3 rounded-xl bg-amber-50 px-3 py-2 text-xs text-amber-800"><p><strong>I found “{suggestion.sourceText}”.</strong> Choose a time before I schedule it.</p><button onClick={() => onOpen(task)} className="mt-2 font-extrabold text-violet-700">Choose a time</button></div> : <div className="mt-3 grid grid-cols-2 gap-2"><button onClick={() => onSchedule(task.id, day, 9)} className="rounded-lg bg-violet-600 px-2 py-2 text-xs font-extrabold text-white">Today 9 AM</button><button onClick={() => onSchedule(task.id, addDays(day, 1), 9)} className="rounded-lg bg-violet-100 px-2 py-2 text-xs font-extrabold text-violet-700">Tomorrow 9 AM</button></div>}
               </article>;
             })}
             {!unplanned.length && <div className="rounded-2xl border border-dashed border-zinc-200 p-5 text-center text-sm text-zinc-400">Everything has a time.</div>}
@@ -601,6 +602,33 @@ function taskTiming(task) {
 }
 
 function inferTaskTime(task, fallbackDay) {
+  const text = `${task.title || ""}\n${task.description || ""}`.trim();
+  const result = parseNaturalDate(text, fallbackDay, { forwardDate: true })[0];
+  if (!result) return task.due_at ? inferredDueDate(task.due_at) : null;
+  const date = result.start.date();
+  const hasExplicitTime = result.start.isCertain("hour");
+  const hasNaturalDaypart = /\b(morning|afternoon|evening|night|noon|midnight)\b/i.test(result.text);
+  return {
+    day: date,
+    hour: date.getHours() + date.getMinutes() / 60,
+    label: format(date, "EEEE, MMM d · h:mm a"),
+    sourceText: result.text,
+    isClear: hasExplicitTime || hasNaturalDaypart,
+  };
+}
+
+function inferredDueDate(value) {
+  const date = new Date(value);
+  return {
+    day: date,
+    hour: date.getHours() + date.getMinutes() / 60,
+    label: format(date, "EEEE, MMM d · h:mm a"),
+    sourceText: "task due date",
+    isClear: true,
+  };
+}
+
+function _legacyInferTaskTime(task, fallbackDay) {
   const text = `${task.title || ""} ${task.description || ""}`.toLowerCase();
   let day = task.due_at ? startOfDay(new Date(task.due_at)) : startOfDay(fallbackDay);
   let foundDate = Boolean(task.due_at);
