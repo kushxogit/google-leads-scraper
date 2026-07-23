@@ -1,131 +1,31 @@
+import { useMemo, useState } from "react";
 import { Link } from "react-router-dom";
+import { CheckSquare2, Table2 } from "lucide-react";
 import { useWorkspaceLeads } from "../hooks/useCrm";
-import { Table2 } from "lucide-react";
+import { useWorkspaceTasks } from "../hooks/useTasks";
+import TaskModal from "../components/TaskModal";
+
+const stages = [
+  { id: "new", label: "New", statuses: ["new"] },
+  { id: "contacted", label: "Contacted", statuses: ["contacted"] },
+  { id: "proposal", label: "Proposal", statuses: ["qualified", "proposal"] },
+  { id: "closed", label: "Closed", statuses: ["won", "lost"] },
+];
 
 export default function Tracker() {
   const { leads, isLoading, updateLead } = useWorkspaceLeads();
-  if (isLoading)
-    return <div className="panel p-8 text-zinc-500">Loading tracker…</div>;
-  return (
-    <div className="mx-auto max-w-7xl space-y-5">
-      <div>
-        <p className="eyebrow">Workspace database</p>
-        <h1 className="mt-1 text-4xl font-extrabold tracking-[-.06em]">
-          Lead tracker
-        </h1>
-        <p className="mt-2 text-sm text-zinc-500">
-          Fast inline updates without leaving your flow.
-        </p>
-      </div>
-      <div className="panel overflow-hidden">
-        <div className="flex items-center gap-3 border-b border-zinc-100 px-5 py-4">
-          <span className="grid h-9 w-9 place-items-center rounded-2xl bg-violet-100 text-violet-600">
-            <Table2 size={17} />
-          </span>
-          <span className="text-sm font-extrabold">All opportunities</span>
-          <span className="mono ml-auto text-xs text-zinc-400">
-            {leads.length} records
-          </span>
-        </div>
-        <div className="divide-y divide-zinc-100 md:hidden">
-          {leads.map((lead) => (
-            <article key={lead.id} className="space-y-3 px-5 py-4">
-              <div>
-                <Link
-                  className="font-extrabold text-zinc-800 hover:text-violet-700"
-                  to={`/leads/${lead.id}`}
-                >
-                  {lead.business_name}
-                </Link>
-                <p className="mt-0.5 text-xs text-zinc-400">
-                  {lead.company || lead.niche || "Opportunity"}
-                </p>
-              </div>
-              <div className="flex flex-wrap items-center justify-between gap-3">
-                <span className="text-xs text-zinc-500">
-                  {lead.phone || "â€”"} Â· Updated {new Date(lead.updated_at).toLocaleDateString()}
-                </span>
-                <select
-                  value={lead.status}
-                  onChange={(e) =>
-                    updateLead(lead.id, { status: e.target.value })
-                  }
-                  className="control py-1.5 text-xs"
-                  aria-label={`Change stage for ${lead.business_name}`}
-                >
-                  <option>new</option>
-                  <option>contacted</option>
-                  <option>qualified</option>
-                  <option>proposal</option>
-                  <option>won</option>
-                  <option>lost</option>
-                </select>
-              </div>
-            </article>
-          ))}
-          {!leads.length && (
-            <p className="p-10 text-center text-zinc-400">No opportunities yet.</p>
-          )}
-        </div>
-        <div className="hidden overflow-x-auto md:block">
-          <table className="w-full min-w-[680px] text-left text-sm">
-            <thead className="bg-zinc-50 text-[10px] font-extrabold uppercase tracking-[.14em] text-zinc-400">
-              <tr>
-                <th className="px-5 py-3">Opportunity</th>
-                <th className="px-5 py-3">Phone</th>
-                <th className="px-5 py-3">Stage</th>
-                <th className="px-5 py-3">Updated</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-zinc-100">
-              {leads.map((lead) => (
-                <tr key={lead.id} className="transition hover:bg-violet-50/45">
-                  <td className="px-5 py-4">
-                    <Link
-                      className="font-extrabold text-zinc-800 hover:text-violet-700"
-                      to={`/leads/${lead.id}`}
-                    >
-                      {lead.business_name}
-                    </Link>
-                    <p className="mt-0.5 text-xs text-zinc-400">
-                      {lead.company || lead.niche || "Opportunity"}
-                    </p>
-                  </td>
-                  <td className="px-5 py-4 text-zinc-500">
-                    {lead.phone || "—"}
-                  </td>
-                  <td className="px-5 py-4">
-                    <select
-                      value={lead.status}
-                      onChange={(e) =>
-                        updateLead(lead.id, { status: e.target.value })
-                      }
-                      className="control py-1.5 text-xs"
-                    >
-                      <option>new</option>
-                      <option>contacted</option>
-                      <option>qualified</option>
-                      <option>proposal</option>
-                      <option>won</option>
-                      <option>lost</option>
-                    </select>
-                  </td>
-                  <td className="px-5 py-4 text-xs text-zinc-400">
-                    {new Date(lead.updated_at).toLocaleDateString()}
-                  </td>
-                </tr>
-              ))}
-              {!leads.length && (
-                <tr>
-                  <td colSpan="4" className="p-10 text-center text-zinc-400">
-                    No opportunities yet.
-                  </td>
-                </tr>
-              )}
-            </tbody>
-          </table>
-        </div>
-      </div>
-    </div>
-  );
+  const taskApi = useWorkspaceTasks();
+  const [sourceView, setSourceView] = useState("all");
+  const [stageView, setStageView] = useState("new");
+  const [taskLead, setTaskLead] = useState(null);
+  const filteredLeads = useMemo(() => leads.filter((lead) => sourceView === "all" || (sourceView === "scraped" ? isScraped(lead) : !isScraped(lead))), [leads, sourceView]);
+  const counts = useMemo(() => ({ all: leads.length, scraped: leads.filter(isScraped).length, manual: leads.filter((lead) => !isScraped(lead)).length }), [leads]);
+  const tasksByLead = useMemo(() => taskApi.tasks.reduce((result, task) => { if (task.lead_id && !["done", "cancelled"].includes(task.status)) result[task.lead_id] = (result[task.lead_id] || 0) + 1; return result; }, {}), [taskApi.tasks]);
+  const leadsFor = (stage) => filteredLeads.filter((lead) => stage.statuses.includes(lead.status));
+  if (isLoading) return <div className="panel p-8 text-zinc-500">Loading pipeline…</div>;
+  return <div className="mx-auto max-w-[1500px] space-y-5 pb-8"><header><p className="eyebrow">Workspace database</p><h1 className="mt-1 text-4xl font-extrabold tracking-[-.06em]">Pipeline board</h1><p className="mt-2 text-sm text-zinc-500">See every opportunity clearly, then decide the next step.</p></header><section className="panel overflow-hidden"><div className="flex flex-col gap-4 border-b border-zinc-100 p-4 sm:flex-row sm:items-center sm:justify-between sm:px-5"><div className="flex items-center gap-3"><span className="grid h-9 w-9 place-items-center rounded-2xl bg-violet-100 text-violet-600"><Table2 size={17} /></span><span className="text-sm font-extrabold">Opportunities</span></div><div className="grid w-full grid-cols-3 rounded-2xl bg-zinc-100 p-1 sm:w-auto" aria-label="Choose opportunity source view"><SourceTab active={sourceView === "all"} onClick={() => setSourceView("all")} label="All" count={counts.all} /><SourceTab active={sourceView === "scraped"} onClick={() => setSourceView("scraped")} label="Scraped" count={counts.scraped} /><SourceTab active={sourceView === "manual"} onClick={() => setSourceView("manual")} label="Manually Added" count={counts.manual} /></div></div><div className="p-4 md:hidden"><div className="grid grid-cols-4 rounded-2xl bg-zinc-100 p-1" aria-label="Choose pipeline stage">{stages.map((stage) => <button key={stage.id} onClick={() => setStageView(stage.id)} className={`rounded-xl px-1 py-2 text-xs font-extrabold ${stageView === stage.id ? "bg-white text-violet-700 shadow-sm" : "text-zinc-500"}`}>{stage.label}</button>)}</div><div className="mt-4 space-y-3">{leadsFor(stages.find((stage) => stage.id === stageView)).map((lead) => <OpportunityCard key={lead.id} lead={lead} taskCount={tasksByLead[lead.id] || 0} onAddTask={setTaskLead} updateLead={updateLead} />)}{!leadsFor(stages.find((stage) => stage.id === stageView)).length && <EmptyState />}</div></div><div className="hidden gap-4 overflow-x-auto p-4 md:grid md:grid-cols-4">{stages.map((stage) => <section key={stage.id} className="min-w-[245px] rounded-2xl bg-zinc-50 p-3"><div className="mb-3 flex items-center justify-between px-1"><h2 className="text-sm font-extrabold">{stage.label}</h2><span className="rounded-lg bg-white px-2 py-1 text-xs font-bold text-zinc-500">{leadsFor(stage).length}</span></div><div className="space-y-3">{leadsFor(stage).map((lead) => <OpportunityCard key={lead.id} lead={lead} taskCount={tasksByLead[lead.id] || 0} onAddTask={setTaskLead} updateLead={updateLead} />)}{!leadsFor(stage).length && <EmptyState />}</div></section>)}</div></section><TaskModal open={Boolean(taskLead)} onClose={() => setTaskLead(null)} onSave={taskApi.createTask} members={taskApi.members} defaultOwnerId={taskApi.currentUserId} leads={leads} initialLeadId={taskLead?.id || ""} /></div>;
 }
+function SourceTab({ active, onClick, label, count }) { return <button onClick={onClick} className={`rounded-xl px-2 py-2 text-xs font-extrabold ${active ? "bg-white text-violet-700 shadow-sm" : "text-zinc-500"}`}><span className="block truncate">{label}</span><span className="text-[10px] opacity-70">({count})</span></button>; }
+function OpportunityCard({ lead, taskCount, onAddTask, updateLead }) { const scraped = isScraped(lead); return <article className="rounded-2xl border border-zinc-100 bg-white p-4 shadow-sm"><div className="flex items-start justify-between gap-3"><Link to={`/leads/${lead.id}`} className="min-w-0 truncate text-base font-extrabold text-zinc-900 hover:text-violet-700">{lead.business_name}</Link><span className={`shrink-0 rounded-full px-2 py-1 text-[10px] font-bold ${scraped ? "bg-sky-100 text-sky-700" : "bg-violet-100 text-violet-700"}`}>{scraped ? "Scraped" : "Manual"}</span></div><p className="mt-1 truncate text-sm text-zinc-500">{lead.company || lead.niche || "Opportunity"}</p><div className="mt-3 flex items-center justify-between gap-2"><select value={lead.status} onChange={(event) => updateLead(lead.id, { status: event.target.value })} className="rounded-lg border border-zinc-200 bg-zinc-50 px-2 py-1 text-xs font-bold text-zinc-600" aria-label={`Change stage for ${lead.business_name}`}><option value="new">New</option><option value="contacted">Contacted</option><option value="qualified">Qualified</option><option value="proposal">Proposal</option><option value="won">Won</option><option value="lost">Lost</option></select>{taskCount > 0 && <span className="rounded-full bg-amber-100 px-2 py-1 text-xs font-extrabold text-amber-800">{taskCount} task{taskCount === 1 ? "" : "s"} pending</span>}</div><footer className="mt-4 flex items-center justify-between border-t border-zinc-100 pt-3"><button onClick={() => onAddTask(lead)} className="inline-flex items-center gap-1.5 text-xs font-extrabold text-violet-700 hover:text-violet-900"><CheckSquare2 size={14} /> Add task</button><span className="text-[10px] text-zinc-400">Updated {lead.updated_at ? new Date(lead.updated_at).toLocaleDateString() : "—"}</span></footer></article>; }
+function EmptyState() { return <p className="rounded-xl border border-dashed border-zinc-200 p-5 text-center text-xs text-zinc-400">No opportunities in this view.</p>; }
+function isScraped(lead) { return lead.source_type === "scraped" || ["scraped", "google maps"].includes(String(lead.source || "").toLowerCase()); }

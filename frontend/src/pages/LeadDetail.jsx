@@ -8,6 +8,7 @@ import {
   Circle,
   Download,
   Link2,
+  Mail,
   MessageCircle,
   Paperclip,
   Send,
@@ -41,6 +42,10 @@ export default function LeadDetail() {
   const [taskOpen, setTaskOpen] = useState(false);
   const [taskEditing, setTaskEditing] = useState(null);
   const [showCompletedTasks, setShowCompletedTasks] = useState(false);
+  const [outreachTab, setOutreachTab] = useState("email");
+  const [emailDraft, setEmailDraft] = useState({ to: "", subject: "", body: "" });
+  const [whatsAppDraft, setWhatsAppDraft] = useState({ phone: "", body: "" });
+  const [previewOpen, setPreviewOpen] = useState(false);
   const current = lead.data;
   const leadTasks = taskApi.tasks.filter((task) => task.lead_id === id);
   const openLeadTasks = leadTasks
@@ -97,6 +102,8 @@ export default function LeadDetail() {
         This opportunity is unavailable.
       </div>
     );
+  const renderMessage = (value) => (value || "").replaceAll("{{name}}", current.business_name || "there").replaceAll("{{company}}", current.company || current.business_name || "your business");
+  const preview = outreachTab === "email" ? { type: "Email", target: emailDraft.to || current.email, subject: emailDraft.subject, body: renderMessage(emailDraft.body) } : { type: "WhatsApp", target: whatsAppDraft.phone || current.phone, body: renderMessage(whatsAppDraft.body) };
   const update = async (changes) => {
     try {
       await updateLead(id, changes);
@@ -133,16 +140,11 @@ export default function LeadDetail() {
       notify(e.message, "error");
     }
   };
-  const whatsapp = async () => {
-    try {
-      await trackWhatsAppClick(id);
-    } finally {
-      window.open(
-        `https://wa.me/${current.phone.replace(/\D/g, "")}`,
-        "_blank",
-        "noopener,noreferrer",
-      );
-    }
+  const sendOutreach = async () => {
+    if (outreachTab === "email") window.location.href = `mailto:${preview.target}?subject=${encodeURIComponent(preview.subject)}&body=${encodeURIComponent(preview.body)}`;
+    else { await trackWhatsAppClick(id); window.open(`https://wa.me/${String(preview.target || "").replace(/\D/g, "")}?text=${encodeURIComponent(preview.body)}`, "_blank", "noopener,noreferrer"); }
+    setPreviewOpen(false);
+    notify(`${preview.type} is ready to send.`);
   };
   const upload = async (event) => {
     const file = event.target.files?.[0];
@@ -251,14 +253,6 @@ export default function LeadDetail() {
                 ),
               )}
             </select>
-            {current.phone && (
-              <button
-                onClick={whatsapp}
-                className="inline-flex flex-1 items-center justify-center gap-2 rounded-2xl bg-white px-4 py-2.5 text-sm font-extrabold text-zinc-950 sm:flex-none"
-              >
-                <MessageCircle size={16} /> WhatsApp
-              </button>
-            )}
             <button
               onClick={async () => {
                 if (
@@ -467,6 +461,7 @@ export default function LeadDetail() {
           </section>
         </main>
         <aside className="space-y-5">
+          <OutreachCenter tab={outreachTab} onTabChange={setOutreachTab} email={emailDraft} onEmailChange={setEmailDraft} whatsapp={whatsAppDraft} onWhatsAppChange={setWhatsAppDraft} lead={current} onPreview={() => setPreviewOpen(true)} />
           <section className="panel p-5">
             <p className="eyebrow">Ownership</p>
             <h2 className="mt-1 text-lg font-extrabold">Keep it moving</h2>
@@ -559,9 +554,16 @@ export default function LeadDetail() {
         initialValues={suggestedTask}
         task={taskEditing}
       />
+      {previewOpen && <OutreachPreview preview={preview} leadName={current.business_name} onClose={() => setPreviewOpen(false)} onConfirm={sendOutreach} />}
     </div>
   );
 }
+function OutreachCenter({ tab, onTabChange, email, onEmailChange, whatsapp, onWhatsAppChange, lead, onPreview }) {
+  const emailReady = Boolean((email.to || lead.email) && email.subject && email.body);
+  const whatsappReady = Boolean((whatsapp.phone || lead.phone) && whatsapp.body);
+  return <section className="panel overflow-hidden p-0"><div className="border-b border-zinc-100 p-5"><p className="eyebrow">Outreach center</p><h2 className="mt-1 text-lg font-extrabold">Prepare, review, then send</h2><p className="mt-1 text-xs text-zinc-500">Nothing is sent until you review the final message.</p></div><div className="grid grid-cols-2 bg-zinc-100 p-1"><button onClick={() => onTabChange("email")} className={`rounded-xl px-2 py-2 text-xs font-extrabold ${tab === "email" ? "bg-white text-violet-700 shadow-sm" : "text-zinc-500"}`}><Mail className="mr-1 inline" size={14} /> Send Email</button><button onClick={() => onTabChange("whatsapp")} className={`rounded-xl px-2 py-2 text-xs font-extrabold ${tab === "whatsapp" ? "bg-white text-violet-700 shadow-sm" : "text-zinc-500"}`}><MessageCircle className="mr-1 inline" size={14} /> Send WhatsApp</button></div><div className="space-y-3 p-5">{tab === "email" ? <><label className="text-xs font-bold text-zinc-600">To<input value={email.to || lead.email || ""} onChange={(event) => onEmailChange({ ...email, to: event.target.value })} className="control mt-1 w-full" placeholder="name@example.com" /></label><label className="text-xs font-bold text-zinc-600">Subject<input value={email.subject} onChange={(event) => onEmailChange({ ...email, subject: event.target.value })} className="control mt-1 w-full" placeholder="Follow up on your inquiry" /></label><label className="text-xs font-bold text-zinc-600">Message<textarea rows="6" value={email.body} onChange={(event) => onEmailChange({ ...email, body: event.target.value })} className="control mt-1 w-full resize-none" placeholder="Hi {{name}}," /></label></> : <><label className="text-xs font-bold text-zinc-600">Phone number<input value={whatsapp.phone || lead.phone || ""} onChange={(event) => onWhatsAppChange({ ...whatsapp, phone: event.target.value })} className="control mt-1 w-full" placeholder="+1 555 019 2834" /></label><label className="text-xs font-bold text-zinc-600">Message<textarea rows="7" value={whatsapp.body} onChange={(event) => onWhatsAppChange({ ...whatsapp, body: event.target.value })} className="control mt-1 w-full resize-none" placeholder="Hi {{name}}," /></label></>}<button onClick={onPreview} disabled={tab === "email" ? !emailReady : !whatsappReady} className="button-primary w-full justify-center disabled:opacity-40">Preview before send</button></div></section>;
+}
+function OutreachPreview({ preview, leadName, onClose, onConfirm }) { return <div className="fixed inset-0 z-[90] grid place-items-center bg-zinc-950/50 p-4 backdrop-blur-sm"><section role="dialog" aria-modal="true" className="panel w-full max-w-xl p-6"><p className="eyebrow">Final review</p><h2 className="mt-1 text-2xl font-extrabold">Review your message to {leadName}</h2><div className="mt-5 rounded-2xl border border-violet-100 bg-violet-50 p-4"><p className="text-xs font-extrabold uppercase tracking-wider text-violet-600">{preview.type}: {preview.target}</p>{preview.subject && <p className="mt-3 text-sm font-extrabold text-zinc-900">{preview.subject}</p>}<p className="mt-3 whitespace-pre-wrap text-sm leading-6 text-zinc-700">{preview.body}</p></div><p className="mt-3 text-xs text-zinc-500">Template tags have been replaced. You can still go back and edit.</p><footer className="mt-6 flex flex-col-reverse gap-2 sm:flex-row sm:justify-end"><button onClick={onClose} className="button-secondary justify-center">Go back & edit</button><button onClick={onConfirm} className="button-primary justify-center">Confirm & send now</button></footer></section></div>; }
 function LeadTaskRow({ task, members, completed, onComplete, onEdit }) {
   const category =
     TASK_CATEGORIES[task.category] ?? TASK_CATEGORIES.development;

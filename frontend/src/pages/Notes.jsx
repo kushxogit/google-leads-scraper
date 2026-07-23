@@ -11,7 +11,6 @@ import {
   Circle,
   FileText,
   Globe2,
-  LayoutList,
   ListChecks,
   ListPlus,
   LockKeyhole,
@@ -54,9 +53,10 @@ export default function Notes() {
   const [searchParams, setSearchParams] = useSearchParams();
   const [view, setView] = useState("mine"); // "mine" | "workspace"
   const [search, setSearch] = useState("");
-  const [sort, setSort] = useState("recent");
+  const sort = "recent";
   const [selectedId, setSelectedId] = useState(searchParams.get("note"));
   const [mobileTab, setMobileTab] = useState("list"); // "list" | "editor" | "discussion"
+  const [showMoreOptions, setShowMoreOptions] = useState(false);
   const [titleDraft, setTitleDraft] = useState("");
   const [bodyDraft, setBodyDraft] = useState("");
   const [editorDirty, setEditorDirty] = useState(false);
@@ -276,13 +276,15 @@ export default function Notes() {
             >
               <Plus size={16} /> New note
             </button>
+            <button
+              onClick={() => setShowMoreOptions(!showMoreOptions)}
+              className="rounded-xl border border-white/15 px-3 py-2.5 text-xs font-extrabold text-white hover:bg-white/10"
+            >
+              {showMoreOptions ? "Hide extra options" : "More note options"}
+            </button>
           </div>
         </div>
-        <div className="relative mt-5 grid grid-cols-3 gap-2 sm:max-w-xl">
-          <Stat icon={FileText} value={visibleNotes.length} label="notes" />
-          <Stat icon={ListChecks} value={noteApi.notes.reduce((sum, note) => sum + (note.lines?.length ?? 0), 0)} label="action lines" />
-          <Stat icon={CheckCircle2} value={taskApi.tasks.filter((task) => task.source_note_id).length} label="tasks sparked" />
-        </div>
+        <p className="relative mt-4 text-xs text-zinc-300">Your notes save automatically. Use the visible task button when a thought needs follow-through.</p>
       </header>
 
       {/* Mobile Screen Navigation Tabs (Visible only on screens below lg) */}
@@ -304,26 +306,18 @@ export default function Notes() {
         >
           Note Editor
         </button>
-        <button
-          onClick={() => setMobileTab("discussion")}
-          disabled={!activeNote}
-          className={`flex-1 rounded-xl py-2 text-xs font-extrabold transition ${
-            mobileTab === "discussion" ? "bg-white text-violet-700 shadow-sm" : "text-zinc-600 disabled:opacity-40"
-          }`}
-        >
-          Info & Discussion
-        </button>
+        <button onClick={() => { setMobileTab("discussion"); setShowMoreOptions(true); }} disabled={!activeNote} className={`flex-1 rounded-xl py-2 text-xs font-extrabold transition ${mobileTab === "discussion" ? "bg-white text-violet-700 shadow-sm" : "text-zinc-600 disabled:opacity-40"}`}>More</button>
       </nav>
 
       {/* Main Grid Section */}
-      <div className="grid gap-4 lg:grid-cols-[280px_minmax(0,1fr)_310px]">
+      <div className={`grid gap-4 ${showMoreOptions ? "lg:grid-cols-[280px_minmax(0,1fr)_310px]" : "lg:grid-cols-[280px_minmax(0,1fr)]"}`}>
         {/* 1. Left Sidebar: Notes List */}
         <aside className={`panel flex flex-col p-3 ${mobileTab !== "list" ? "hidden lg:flex" : "flex"} min-h-[500px]`}>
           <div className="flex rounded-2xl bg-zinc-100 p-1">
             <TabButton active={view === "mine"} onClick={() => setView("mine")} icon={LockKeyhole} label="My notes" count={noteApi.notes.filter((note) => note.visibility === "private").length} />
             <TabButton active={view === "workspace"} onClick={() => setView("workspace")} icon={UsersRound} label="Workspace" count={noteApi.notes.filter((note) => note.visibility === "shared").length} />
           </div>
-          <div className="mt-3 flex items-center gap-2">
+          <div className="mt-3">
             <div className="control flex min-w-0 flex-1 items-center gap-2 px-3">
               <Search size={14} className="shrink-0 text-zinc-400" />
               <input
@@ -333,11 +327,6 @@ export default function Notes() {
                 className="min-w-0 flex-1 bg-transparent py-0.5 text-xs outline-none placeholder:text-zinc-400"
               />
             </div>
-            <select value={sort} onChange={(event) => setSort(event.target.value)} className="control w-[88px] px-2 text-[11px] font-bold">
-              <option value="recent">Recent</option>
-              <option value="pinned">Pinned</option>
-              <option value="active">Open lines</option>
-            </select>
           </div>
           <div className="mt-3 flex items-center justify-between px-1">
             <p className="eyebrow">{view === "mine" ? "Private" : "Workspace shared"}</p>
@@ -350,12 +339,6 @@ export default function Notes() {
               <NoteCard key={note.id} note={note} active={note.id === selectedId} onClick={() => selectNote(note.id)} taskCount={taskCountForNote(note, taskApi.tasks)} />
             ))}
             {!visibleNotes.length && <EmptyNotes view={view} onCreate={createNoteAndFocus} />}
-          </div>
-          <div className="mt-3 rounded-xl border border-dashed border-zinc-200 bg-zinc-50/50 p-2.5">
-            <div className="flex items-start gap-2">
-              <LayoutList size={14} className="mt-0.5 shrink-0 text-violet-500" />
-              <p className="text-[11px] leading-4 text-zinc-500">Tip: turn any action line into a task with one click.</p>
-            </div>
           </div>
         </aside>
 
@@ -397,7 +380,8 @@ export default function Notes() {
         </main>
 
         {/* 3. Right Sidebar: Info & Discussion */}
-        <aside className={`space-y-4 ${mobileTab !== "discussion" ? "hidden lg:block" : "block"}`}>
+        <aside className={`space-y-4 ${(!showMoreOptions && mobileTab !== "discussion") ? "hidden" : mobileTab !== "discussion" ? "hidden lg:block" : "block"}`}>
+          <button onClick={() => { setShowMoreOptions(false); setMobileTab("editor"); }} className="button-secondary w-full justify-center">Hide extra note options</button>
           <CollaborationCard note={activeNote} members={noteApi.members} currentUserId={user?.id} />
           <MomentumCard note={activeNote} tasks={taskApi.tasks} />
           <CommentsCard note={activeNote} comments={comments} members={noteApi.members} />
@@ -967,18 +951,6 @@ function TabButton({ active, onClick, icon: Icon, label, count }) {
       <span className="truncate">{label}</span>
       <span className="rounded-md bg-zinc-100 px-1.5 py-0.5 text-[9px]">{count}</span>
     </button>
-  );
-}
-
-function Stat({ icon: Icon, value, label }) {
-  return (
-    <div className="rounded-xl border border-white/10 bg-white/[.08] p-2.5 sm:p-3">
-      <div className="flex items-center gap-1.5 text-violet-200">
-        <Icon size={13} />
-        <span className="mono text-base font-medium text-white sm:text-lg">{value}</span>
-      </div>
-      <p className="mt-0.5 text-[9px] font-bold uppercase tracking-[.12em] text-zinc-400">{label}</p>
-    </div>
   );
 }
 

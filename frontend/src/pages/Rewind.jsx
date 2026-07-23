@@ -5,6 +5,7 @@ import {
   endOfDay,
   endOfWeek,
   format,
+  formatDistanceToNow,
   isSameDay,
   startOfDay,
   startOfWeek,
@@ -266,7 +267,7 @@ export default function Rewind() {
         />
       ) : (
         <div className="grid gap-4 xl:grid-cols-[280px_1fr]">
-          <Unplanned tasks={unplanned} api={taskApi} onOpen={openTask} />
+          <Unplanned tasks={unplanned} api={taskApi} onOpen={openTask} onSchedule={schedule} day={cursor} />
           {view === "team" ? (
             <TeamView tasks={filtered} members={taskApi.members} onOpen={openTask} />
           ) : (
@@ -559,8 +560,8 @@ function PlanDay({
               const suggestion = suggestions.find((item) => item.task.id === task.id)?.suggestion;
               const category = TASK_CATEGORIES[task.category] ?? TASK_CATEGORIES.development;
               return <article key={task.id} className="rounded-2xl border border-zinc-200 bg-white p-3 shadow-sm">
-                <button onClick={() => onOpen(task)} className="w-full text-left"><div className="flex items-center gap-2"><span className={`h-2 w-2 rounded-full ${category.dot}`} /><span className="text-[10px] font-extrabold uppercase tracking-[.12em] text-zinc-400">{category.label}</span></div><p className="mt-2 line-clamp-2 text-sm font-extrabold leading-5 text-zinc-900">{task.title}</p></button>
-                {suggestion ? <div className="mt-3 flex items-center justify-between gap-2 rounded-xl bg-violet-50 px-2.5 py-2"><span className="min-w-0 text-xs font-bold text-violet-800"><CalendarClock className="mr-1 inline" size={13} />{suggestion.label}</span><button onClick={() => onSchedule(task.id, suggestion.day, suggestion.hour)} className="shrink-0 rounded-lg bg-violet-600 px-2.5 py-1.5 text-xs font-extrabold text-white hover:bg-violet-700">Schedule</button></div> : <button onClick={() => onOpen(task)} className="mt-3 text-xs font-extrabold text-violet-700 hover:text-violet-900">Pick a time</button>}
+                <button onClick={() => onOpen(task)} className="w-full text-left"><div className="flex items-center gap-2"><span className={`h-2 w-2 rounded-full ${category.dot}`} /><span className="text-[10px] font-extrabold uppercase tracking-[.12em] text-zinc-400">{category.label}</span></div><p className="mt-2 line-clamp-2 text-sm font-extrabold leading-5 text-zinc-900">{task.title}</p>{task.description && <p className="mt-1 line-clamp-2 text-xs leading-5 text-zinc-500">{task.description}</p>}{task.leads?.name && <p className="mt-2 truncate text-xs font-bold text-violet-700">Opportunity: {task.leads.name}</p>}</button>
+                {suggestion ? <div className="mt-3 flex items-center justify-between gap-2 rounded-xl bg-violet-50 px-2.5 py-2"><span className="min-w-0 text-xs font-bold text-violet-800"><CalendarClock className="mr-1 inline" size={13} />{suggestion.label}</span><button onClick={() => onSchedule(task.id, suggestion.day, suggestion.hour)} className="shrink-0 rounded-lg bg-violet-600 px-2.5 py-1.5 text-xs font-extrabold text-white hover:bg-violet-700">Use this time</button></div> : <div className="mt-3 grid grid-cols-2 gap-2"><button onClick={() => onSchedule(task.id, day, 9)} className="rounded-lg bg-violet-600 px-2 py-2 text-xs font-extrabold text-white">Today 9 AM</button><button onClick={() => onSchedule(task.id, addDays(day, 1), 9)} className="rounded-lg bg-violet-100 px-2 py-2 text-xs font-extrabold text-violet-700">Tomorrow 9 AM</button></div>}
               </article>;
             })}
             {!unplanned.length && <div className="rounded-2xl border border-dashed border-zinc-200 p-5 text-center text-sm text-zinc-400">Everything has a time.</div>}
@@ -579,7 +580,7 @@ function AgendaRow({ entry, onOpen }) {
   const category = TASK_CATEGORIES[entry.category] ?? TASK_CATEGORIES.meeting;
   const start = new Date(entry.startsAt);
   const end = entry.endsAt ? new Date(entry.endsAt) : null;
-  const content = <><div className="min-w-0 flex-1"><div className="flex items-center gap-2"><span className={`h-2 w-2 rounded-full ${entry.type === "event" ? "bg-rose-500" : category.dot}`} /><span className="text-[10px] font-extrabold uppercase tracking-[.11em] text-zinc-400">{entry.type === "event" ? "Calendar" : category.label}</span></div><p className="mt-1 truncate text-sm font-extrabold text-zinc-900">{entry.title}</p></div><div className="shrink-0 text-right"><p className="text-xs font-extrabold text-zinc-800">{format(start, "h:mm a")}</p><p className="mt-0.5 text-[11px] text-zinc-400">{end ? formatDuration((end - start) / 60000) : "60 min"}</p></div></>;
+  const content = <><div className="min-w-0 flex-1"><div className="flex items-center gap-2"><span className={`h-2 w-2 rounded-full ${entry.type === "event" ? "bg-rose-500" : category.dot}`} /><span className="text-[10px] font-extrabold uppercase tracking-[.11em] text-zinc-400">{entry.type === "event" ? "Calendar" : category.label}</span></div><p className="mt-1 truncate text-sm font-extrabold text-zinc-900">{entry.title}</p>{entry.task?.leads?.name && <p className="mt-1 truncate text-xs font-bold text-violet-700">Opportunity: {entry.task.leads.name}</p>}</div><div className="shrink-0 text-right"><p className="text-xs font-extrabold text-zinc-800">{format(start, "h:mm a")}</p><p className="mt-0.5 text-[11px] text-zinc-400">{end ? formatDuration((end - start) / 60000) : "60 min"}</p></div></>;
   if (entry.type === "event") return <article className="flex items-center gap-3 rounded-2xl border border-rose-100 bg-rose-50/70 px-3 py-3">{content}</article>;
   return <button onClick={() => onOpen(entry.task)} className={`flex w-full items-center gap-3 rounded-2xl border px-3 py-3 text-left transition hover:-translate-y-0.5 hover:shadow-md ${category.card}`}>{content}</button>;
 }
@@ -589,6 +590,14 @@ function formatDuration(minutes) {
   const hours = Math.floor(rounded / 60);
   const remainder = rounded % 60;
   return `${hours ? `${hours}h ` : ""}${remainder ? `${remainder}m` : ""}`.trim() || "0m";
+}
+
+function taskTiming(task) {
+  const value = task.scheduled_start || task.due_at;
+  if (!value) return "No time chosen yet";
+  const date = new Date(value);
+  const relative = formatDistanceToNow(date, { addSuffix: true });
+  return `${task.scheduled_start ? "Scheduled" : "Due"} ${relative} · ${format(date, "EEE, MMM d · h:mm a")}`;
 }
 
 function inferTaskTime(task, fallbackDay) {
@@ -618,7 +627,7 @@ function inferTaskTime(task, fallbackDay) {
   return { day: date, hour: hour + minute / 60, label: `${format(date, "EEE, MMM d · h:mm a")}${foundTime ? "" : " · suggested"}` };
 }
 
-function Unplanned({ tasks, api, onOpen }) {
+function Unplanned({ tasks, api, onOpen, onSchedule, day }) {
   return (
     <aside className="panel h-fit p-4">
       <div className="flex items-center gap-3">
@@ -640,6 +649,8 @@ function Unplanned({ tasks, api, onOpen }) {
             task={task}
             members={api.members}
             onOpen={onOpen}
+            onSchedule={onSchedule}
+            day={day}
           />
         ))}
         {!tasks.length && (
@@ -806,19 +817,22 @@ function TeamView({ tasks, members, onOpen }) {
   );
 }
 
-function TaskCard({ task, members, onOpen }) {
+function TaskCard({ task, members, onOpen, onSchedule, day }) {
   const category = TASK_CATEGORIES[task.category];
   return (
-    <button
+    <article
       draggable
       onDragStart={(e) => e.dataTransfer.setData("task-id", task.id)}
-      onClick={() => onOpen(task)}
       className={`w-full rounded-2xl border p-3 text-left transition hover:-translate-y-0.5 hover:shadow-md ${category.card}`}
     >
+      <button onClick={() => onOpen(task)} className="w-full text-left">
       <span className="text-[9px] font-extrabold uppercase tracking-[.12em] opacity-60">
         {category.label}
       </span>
       <p className="mt-1 text-sm font-extrabold leading-5">{task.title}</p>
+      {task.description && <p className="mt-1 line-clamp-2 text-xs leading-5 opacity-70">{task.description}</p>}
+      {task.leads?.name && <p className="mt-2 truncate text-xs font-extrabold text-violet-700">Opportunity: {task.leads.name}</p>}
+      {(task.scheduled_start || task.due_at) && <p className="mt-2 text-xs font-bold opacity-70">{taskTiming(task)}</p>}
       <div className="mt-2 flex items-center gap-1">
         {task.assignee_ids.map((id) => (
           <span
@@ -837,7 +851,9 @@ function TaskCard({ task, members, onOpen }) {
           </span>
         )}
       </div>
-    </button>
+      </button>
+      {onSchedule && !task.scheduled_start && <div className="mt-3 grid grid-cols-2 gap-2"><button onClick={() => onSchedule(task.id, day, 9)} className="rounded-lg bg-white/80 px-2 py-1.5 text-[10px] font-extrabold text-violet-700">Today 9 AM</button><button onClick={() => onSchedule(task.id, addDays(day, 1), 9)} className="rounded-lg bg-white/80 px-2 py-1.5 text-[10px] font-extrabold text-violet-700">Tomorrow</button></div>}
+    </article>
   );
 }
 

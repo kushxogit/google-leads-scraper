@@ -104,7 +104,7 @@ export default function AddLeadModal({ isOpen, onClose }) {
                 onChange={(e) => setForm({ ...form, [key]: e.target.value })}
                 className="control mt-2 w-full normal-case tracking-normal"
                 placeholder={
-                  key === "business_name" ? "e.g. Northstar Studios" : ""
+                  key === "business_name" ? "Business name" : ""
                 }
               />
             </label>
