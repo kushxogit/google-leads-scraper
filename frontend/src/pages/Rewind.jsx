@@ -13,12 +13,14 @@ import {
 } from "date-fns";
 import {
   CheckCircle2,
+  CalendarDays,
   CalendarClock,
   ChevronLeft,
   ChevronRight,
   Clock3,
   Inbox,
   MessageSquare,
+  Flag,
   Plus,
   RotateCcw,
   Sparkles,
@@ -549,14 +551,14 @@ function PlanDay({
             <div className="rounded-2xl border border-dashed border-violet-200 bg-violet-50/40 px-4 py-3 text-sm text-violet-800"><span className="font-extrabold">Open space.</span> Schedule a task from your inbox when you are ready to protect time for it.</div>
           </div>
         </main>
-        <aside className="border-t border-zinc-100 bg-zinc-50/60 p-4 sm:p-6 lg:border-l lg:border-t-0">
+        <aside className="flex max-h-[760px] flex-col border-t border-zinc-100 bg-zinc-50/60 p-4 sm:p-6 lg:border-l lg:border-t-0">
           <div className="flex items-center gap-3">
             <span className="grid h-10 w-10 place-items-center rounded-2xl bg-white text-violet-600 shadow-sm"><Inbox size={18} /></span>
             <div><p className="font-extrabold">Inbox</p><p className="text-xs text-zinc-400">Unscheduled tasks and notes</p></div>
             <span className="mono ml-auto text-xs text-zinc-400">{unplanned.length}</span>
           </div>
           {suggestions.length > 0 && <div className="mt-5 rounded-2xl border border-violet-100 bg-white p-3"><div className="flex items-center gap-2 text-xs font-extrabold text-violet-700"><Sparkles size={15} /> Time found in your tasks</div><p className="mt-1 text-xs leading-5 text-zinc-500">Review a suggestion, then add it to your day in one tap.</p></div>}
-          <div className="mt-3 space-y-3">
+          <div className="mt-3 min-h-0 flex-1 space-y-3 overflow-y-auto pr-1">
             {unplanned.map((task) => {
               const suggestion = suggestions.find((item) => item.task.id === task.id)?.suggestion;
               const category = TASK_CATEGORIES[task.category] ?? TASK_CATEGORIES.development;
@@ -861,6 +863,7 @@ function TaskCard({ task, members, onOpen, onSchedule, day }) {
       {task.description && <p className="mt-1 line-clamp-2 text-xs leading-5 opacity-70">{task.description}</p>}
       {task.leads?.name && <p className="mt-2 truncate text-xs font-extrabold text-violet-700">Opportunity: {task.leads.name}</p>}
       {(task.scheduled_start || task.due_at) && <p className="mt-2 text-xs font-bold opacity-70">{taskTiming(task)}</p>}
+      {task.created_at && <p className="mt-1 text-[11px] font-medium opacity-60">Added {format(new Date(task.created_at), "EEE, MMM d · h:mm a")}</p>}
       <div className="mt-2 flex items-center gap-1">
         {task.assignee_ids.map((id) => (
           <span
@@ -882,6 +885,17 @@ function TaskCard({ task, members, onOpen, onSchedule, day }) {
       </button>
       {onSchedule && !task.scheduled_start && <div className="mt-3 grid grid-cols-2 gap-2"><button onClick={() => onSchedule(task.id, day, 9)} className="rounded-lg bg-white/80 px-2 py-1.5 text-[10px] font-extrabold text-violet-700">Today 9 AM</button><button onClick={() => onSchedule(task.id, addDays(day, 1), 9)} className="rounded-lg bg-white/80 px-2 py-1.5 text-[10px] font-extrabold text-violet-700">Tomorrow</button></div>}
     </article>
+  );
+}
+
+function TaskInfo({ label, value, icon: Icon }) {
+  return (
+    <div className="rounded-xl border border-zinc-100 bg-white p-3">
+      <div className="flex items-center gap-1.5 text-[10px] font-extrabold uppercase tracking-[.12em] text-zinc-400">
+        <Icon size={13} /> {label}
+      </div>
+      <p className="mt-1 text-xs font-extrabold leading-5 text-zinc-700">{value}</p>
+    </div>
   );
 }
 
@@ -941,11 +955,20 @@ function TaskDrawer({ task, members, api, onClose, onEdit }) {
         >
           {task.title}
         </h2>
-        {task.description && (
-          <p className="mt-3 whitespace-pre-wrap text-sm leading-6 text-zinc-500">
-            {task.description}
-          </p>
-        )}
+        <div className="mt-4 flex flex-wrap gap-2">
+          <span className="rounded-xl bg-zinc-100 px-3 py-1.5 text-xs font-extrabold capitalize text-zinc-700">{task.status.replace("_", " ")}</span>
+          <span className="rounded-xl bg-zinc-100 px-3 py-1.5 text-xs font-extrabold capitalize text-zinc-700"><Flag className="mr-1 inline" size={13} />{task.priority} priority</span>
+        </div>
+        <section className="mt-5 rounded-2xl border border-zinc-100 bg-zinc-50/70 p-4">
+          <p className="eyebrow">Task details</p>
+          <p className="mt-2 whitespace-pre-wrap text-sm leading-6 text-zinc-700">{task.description || "No extra details were added to this task."}</p>
+        </section>
+        <section className="mt-4 grid gap-2 sm:grid-cols-2">
+          <TaskInfo label="Added" value={task.created_at ? format(new Date(task.created_at), "EEEE, MMM d · h:mm a") : "Not available"} icon={CalendarDays} />
+          <TaskInfo label="Due" value={task.due_at ? format(new Date(task.due_at), "EEEE, MMM d · h:mm a") : "No due date"} icon={CalendarClock} />
+          <TaskInfo label="Scheduled start" value={task.scheduled_start ? format(new Date(task.scheduled_start), "EEEE, MMM d · h:mm a") : "Not scheduled"} icon={Clock3} />
+          <TaskInfo label="Scheduled end" value={task.scheduled_end ? format(new Date(task.scheduled_end), "EEEE, MMM d · h:mm a") : "No end time"} icon={Clock3} />
+        </section>
         <div className="mt-5 flex flex-wrap gap-2">
           {task.assignee_ids.map((id) => (
             <span
