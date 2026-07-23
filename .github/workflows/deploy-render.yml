@@ -1,0 +1,48 @@
+name: Verify and deploy to Render
+
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  verify-and-deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check out code
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: |
+            backend/package-lock.json
+            frontend/package-lock.json
+
+      - name: Check backend syntax
+        working-directory: backend
+        run: |
+          npm ci
+          node --check server.js
+
+      - name: Build and lint frontend
+        working-directory: frontend
+        run: |
+          npm ci
+          npm run build
+          npm run lint
+
+      - name: Deploy backend
+        env:
+          DEPLOY_HOOK_URL: ${{ secrets.RENDER_BACKEND_DEPLOY_HOOK_URL }}
+        run: curl --fail --silent --show-error --request POST "$DEPLOY_HOOK_URL"
+
+      - name: Deploy frontend
+        env:
+          DEPLOY_HOOK_URL: ${{ secrets.RENDER_FRONTEND_DEPLOY_HOOK_URL }}
+        run: curl --fail --silent --show-error --request POST "$DEPLOY_HOOK_URL"
