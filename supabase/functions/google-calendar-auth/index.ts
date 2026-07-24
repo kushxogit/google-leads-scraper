@@ -1,3 +1,5 @@
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+
 function getCorsHeaders(request: Request) {
   const reqOrigin = request.headers.get("origin");
   const appUrl = Deno.env.get("APP_URL");
@@ -41,10 +43,15 @@ Deno.serve(async (request) => {
       .eq("user_id", user.id)
       .maybeSingle();
     if (!membership) return json({ error: "Workspace access denied" }, 403, cors);
+    const clientAppUrl =
+      request.headers.get("origin") ||
+      Deno.env.get("APP_URL") ||
+      "https://paisamaker.onrender.com";
+
     if (body.action === "start") {
       const params = new URLSearchParams({
         client_id: env("GOOGLE_CLIENT_ID"),
-        redirect_uri: `${env("APP_URL")}/calendar/callback`,
+        redirect_uri: `${clientAppUrl}/calendar/callback`,
         response_type: "code",
         access_type: "offline",
         prompt: "consent",
@@ -58,7 +65,7 @@ Deno.serve(async (request) => {
     if (body.action === "exchange") {
       const token = await googleToken({
         code: body.code,
-        redirect_uri: `${env("APP_URL")}/calendar/callback`,
+        redirect_uri: `${clientAppUrl}/calendar/callback`,
         grant_type: "authorization_code",
       });
       const identity = await fetch(
