@@ -10,7 +10,7 @@ const {
 
 const router = express.Router();
 const publicColumns = `
-  id, query, niche, area, source, lead_limit, headless, status,
+  id, query, niche, area, source, lead_limit, headless, exclude_website, status,
   found_count, saved_count, duplicate_count, error_message,
   created_at, started_at, finished_at
 `;
@@ -38,6 +38,7 @@ router.post("/", async (req, res) => {
       source,
       limit,
       headless,
+      exclude_website: excludeWebsite,
       workspace_id: workspaceId,
     } = req.body;
     const auth = await authorize(req, workspaceId);
@@ -46,8 +47,8 @@ router.post("/", async (req, res) => {
     const leadLimit = Math.max(1, Math.min(100, Number(limit) || 50));
     const insert = db.prepare(`
       INSERT INTO scrape_jobs
-        (query, niche, area, source, lead_limit, headless, workspace_id, created_by, supabase_url, supabase_key)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        (query, niche, area, source, lead_limit, headless, exclude_website, workspace_id, created_by, supabase_url, supabase_key)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `);
     const niches = split(niche, [""]);
     const areas = split(area, [""]);
@@ -70,6 +71,7 @@ router.post("/", async (req, res) => {
             source || "Google Maps",
             leadLimit,
             headless ? 1 : 0,
+            excludeWebsite ? 1 : 0,
             auth.workspaceId,
             auth.user.id,
             auth.supabaseUrl,
@@ -94,6 +96,7 @@ router.post("/", async (req, res) => {
             source || "Google Maps",
             leadLimit,
             headless ? 1 : 0,
+            excludeWebsite ? 1 : 0,
             auth.workspaceId,
             auth.user.id,
             auth.supabaseUrl,

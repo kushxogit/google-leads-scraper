@@ -7,6 +7,7 @@ import {
   ChevronRight,
   Circle,
   Download,
+  ExternalLink,
   Link2,
   Mail,
   MessageCircle,
@@ -231,6 +232,16 @@ export default function LeadDetail() {
                 .filter(Boolean)
                 .join(" · ") || "A new opportunity"}
             </p>
+            {isExternalUrl(current.source_url) && (
+              <a
+                href={current.source_url}
+                target="_blank"
+                rel="noreferrer"
+                className="mt-4 inline-flex items-center gap-2 text-sm font-extrabold text-violet-200 transition hover:text-white"
+              >
+                Open Google Maps profile <ExternalLink size={15} />
+              </a>
+            )}
           </div>
           <div className="flex flex-wrap gap-2">
             <button
@@ -641,6 +652,14 @@ function taskOrder(a, b) {
   const aTime = a.scheduled_start || a.due_at || "9999";
   const bTime = b.scheduled_start || b.due_at || "9999";
   return String(aTime).localeCompare(String(bTime));
+}
+function isExternalUrl(value) {
+  try {
+    const url = new URL(value);
+    return url.protocol === "https:" || url.protocol === "http:";
+  } catch {
+    return false;
+  }
 }
 function Field({ label, value, onBlur }) {
   const [draft, setDraft] = useState(value ?? "");

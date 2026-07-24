@@ -25,6 +25,8 @@ if (!jobColumns.has("supabase_url"))
   db.exec("ALTER TABLE scrape_jobs ADD COLUMN supabase_url TEXT");
 if (!jobColumns.has("supabase_key"))
   db.exec("ALTER TABLE scrape_jobs ADD COLUMN supabase_key TEXT");
+if (!jobColumns.has("exclude_website"))
+  db.exec("ALTER TABLE scrape_jobs ADD COLUMN exclude_website INTEGER DEFAULT 0");
 
 db.pragma("journal_mode = WAL");
 

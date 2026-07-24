@@ -26,6 +26,7 @@ export default function ScrapeJobs() {
     source: "Google Maps",
     limit: 10,
     headless: true,
+    exclude_website: false,
   });
   const [sending, setSending] = useState(false);
   const [error, setError] = useState("");
@@ -175,6 +176,25 @@ export default function ScrapeJobs() {
               />{" "}
               Run invisibly
             </label>
+            <details className="rounded-2xl border border-zinc-100 bg-zinc-50/70 p-3">
+              <summary className="cursor-pointer text-sm font-extrabold text-zinc-700">
+                Filters
+              </summary>
+              <label className="mt-3 flex cursor-pointer items-center gap-2 text-sm font-semibold text-zinc-600">
+                <input
+                  type="checkbox"
+                  checked={form.exclude_website}
+                  onChange={(e) =>
+                    setForm({ ...form, exclude_website: e.target.checked })
+                  }
+                  className="accent-violet-600"
+                />
+                Exclude businesses with a website
+              </label>
+              <p className="mt-2 text-xs leading-5 text-zinc-500">
+                Only save businesses for which Google Maps does not list a website.
+              </p>
+            </details>
             <button
               disabled={sending}
               className="button-primary liquid-button w-full"

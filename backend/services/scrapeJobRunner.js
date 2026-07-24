@@ -94,6 +94,7 @@ async function runJobs() {
         area: job.area,
         limit: job.lead_limit,
         headless: job.headless,
+        excludeWebsite: Boolean(job.exclude_website),
         onLead,
         onLog,
       });

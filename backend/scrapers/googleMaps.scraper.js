@@ -1,6 +1,6 @@
 const { chromium } = require('playwright');
 
-async function scrape({ query, niche, area, limit, headless, onLead, onLog }) {
+async function scrape({ query, niche, area, limit, headless, excludeWebsite, onLead, onLog }) {
   let browser;
   try {
     onLog(`Starting Google Maps scraper for query: "${query}"`);
@@ -125,6 +125,11 @@ async function scrape({ query, niche, area, limit, headless, onLead, onLog }) {
             source: 'Google Maps',
             sourceUrl: href
           };
+
+          if (excludeWebsite && website && website !== 'N/A') {
+            onLog(`Skipped: ${businessName} has a website`);
+            continue;
+          }
 
           onLog(`Found: ${businessName}`);
           await onLead(lead);
