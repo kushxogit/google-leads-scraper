@@ -130,6 +130,17 @@ export function useWorkspaceTasks() {
         ),
       );
   };
+  const triggerCalendarSync = () => {
+    if (!activeWorkspaceId) return;
+    void supabase.functions
+      .invoke("google-calendar-auth", {
+        body: { action: "sync", workspace_id: activeWorkspaceId },
+      })
+      .then(() => {
+        client.invalidateQueries({ queryKey: ["calendar-events"] });
+      })
+      .catch(() => {});
+  };
   const createTask = async (input) => {
     const payload = {
       workspace_id: activeWorkspaceId,
@@ -155,6 +166,7 @@ export function useWorkspaceTasks() {
       input.assignee_ids?.length ? input.assignee_ids : [user.id],
     );
     await refresh();
+    triggerCalendarSync();
     return task;
   };
   const updateTask = async (taskId, changes) => {
@@ -196,6 +208,7 @@ export function useWorkspaceTasks() {
     )
       await replaceAssignees(taskId, assigneeIds);
     await refresh();
+    triggerCalendarSync();
   };
   const deleteTask = async (taskId) => {
     await result(
@@ -206,6 +219,7 @@ export function useWorkspaceTasks() {
         .eq("workspace_id", activeWorkspaceId),
     );
     await refresh();
+    triggerCalendarSync();
   };
   const addComment = async (taskId, body) => {
     const lowered = body.toLowerCase();

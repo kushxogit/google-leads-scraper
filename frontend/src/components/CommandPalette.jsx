@@ -124,8 +124,8 @@ export default function CommandPalette({
                 />
                 <Action
                   icon={CalendarDays}
-                  label="Open today"
-                  detail="View the Rewind timeline"
+                  label="Open Today"
+                  detail="See your task timeline"
                   onClick={() => go("/rewind")}
                 />
                 <Action
@@ -136,8 +136,8 @@ export default function CommandPalette({
                 />
                 <Action
                   icon={Target}
-                  label="Launch scraper"
-                  detail="Find pipeline opportunities"
+                  label="Find leads"
+                  detail="Launch a Google Maps scan"
                   onClick={() => go("/jobs")}
                 />
               </div>

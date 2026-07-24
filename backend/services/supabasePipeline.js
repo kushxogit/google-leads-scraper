@@ -99,6 +99,7 @@ async function insertLead(
       score_breakdown: scoreBreakdown,
       recommended_offer: recommendedOffer,
       remarks: null,
+      scrape_job_id: job.id,
     },
   };
   return rest(`${url}/rest/v1/leads`, token, job.supabase_key, {

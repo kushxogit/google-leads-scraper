@@ -12,7 +12,7 @@ const fields = [
   ["area", "Location"],
 ];
 
-export default function AddLeadModal({ isOpen, onClose }) {
+export default function AddLeadModal({ isOpen, onClose, initialStatus = "new" }) {
   const { addLead } = useWorkspaceLeads();
   const { notify } = useFeedback();
   const [form, setForm] = useState({
@@ -22,9 +22,15 @@ export default function AddLeadModal({ isOpen, onClose }) {
     website: "",
     niche: "",
     area: "",
-    status: "new",
+    status: initialStatus || "new",
   });
   const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    if (isOpen) {
+      setForm((f) => ({ ...f, status: initialStatus || "new" }));
+    }
+  }, [isOpen, initialStatus]);
   useEffect(() => {
     if (!isOpen) return undefined;
     const close = (event) => event.key === "Escape" && onClose();

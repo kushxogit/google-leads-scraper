@@ -11,7 +11,7 @@ const {
 const router = express.Router();
 const publicColumns = `
   id, query, niche, area, source, lead_limit, headless, exclude_website, status,
-  found_count, saved_count, duplicate_count, error_message,
+  found_count, saved_count, duplicate_count, error_message, reviewed_at,
   created_at, started_at, finished_at
 `;
 
@@ -130,6 +130,27 @@ router.get("/:id", async (req, res) => {
     await authorize(req, job.workspace_id);
     delete job.workspace_id;
     return res.json(job);
+  } catch (error) {
+    return res.status(401).json({ error: error.message });
+  }
+});
+
+// Review is deliberately a lightweight acknowledgement, not a workflow state.
+// It lets the client distinguish newly-imported job results from a scan the team
+// has already triaged, while the actual lead stage remains the source of truth.
+router.patch("/:id/review", async (req, res) => {
+  try {
+    const job = db
+      .prepare("SELECT id, workspace_id FROM scrape_jobs WHERE id = ?")
+      .get(req.params.id);
+    if (!job) return res.status(404).json({ error: "Not found" });
+    await authorize(req, job.workspace_id);
+    const reviewedAt = req.body?.reviewed === false ? null : new Date().toISOString();
+    db.prepare("UPDATE scrape_jobs SET reviewed_at = ? WHERE id = ?").run(
+      reviewedAt,
+      job.id,
+    );
+    return res.json({ success: true, reviewed_at: reviewedAt });
   } catch (error) {
     return res.status(401).json({ error: error.message });
   }

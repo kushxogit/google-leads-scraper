@@ -29,6 +29,7 @@ export default function ScrapeJobs() {
     exclude_website: false,
   });
   const [sending, setSending] = useState(false);
+  const [reviewingId, setReviewingId] = useState(null);
   const [error, setError] = useState("");
   const requestConfig = useCallback(async () => {
     const {
@@ -92,6 +93,26 @@ export default function ScrapeJobs() {
       );
     } finally {
       setSending(false);
+    }
+  };
+  const review = async (job, reviewed) => {
+    setReviewingId(job.id);
+    try {
+      const config = await requestConfig();
+      await axios.patch(
+        `${apiBase}/api/scrape-jobs/${job.id}/review`,
+        { reviewed },
+        { headers: config.headers },
+      );
+      await load();
+    } catch (reviewError) {
+      setError(
+        reviewError.response?.data?.error ||
+          reviewError.message ||
+          "Could not update this review.",
+      );
+    } finally {
+      setReviewingId(null);
     }
   };
   return (
@@ -256,7 +277,14 @@ export default function ScrapeJobs() {
                   <p className="text-xs text-rose-500">{job.error_message}</p>
                 )}
                 {job.status === "completed" && job.saved_count > 0 && (
-                  <Link to="/leads" className="inline-flex text-xs font-extrabold text-violet-600">
+                  <ReviewButton
+                    job={job}
+                    reviewing={reviewingId === job.id}
+                    onReview={review}
+                  />
+                )}
+                {job.status === "completed" && job.saved_count > 0 && (
+                  <Link to={`/leads?scrape_job=${job.id}`} className="inline-flex text-xs font-extrabold text-violet-600">
                     View saved leads â†’
                   </Link>
                 )}
@@ -312,8 +340,15 @@ export default function ScrapeJobs() {
                         </p>
                       )}
                       {job.status === "completed" && job.saved_count > 0 && (
+                        <ReviewButton
+                          job={job}
+                          reviewing={reviewingId === job.id}
+                          onReview={review}
+                        />
+                      )}
+                      {job.status === "completed" && job.saved_count > 0 && (
                         <Link
-                          to="/leads"
+                          to={`/leads?scrape_job=${job.id}`}
                           className="mt-2 inline-flex text-[11px] font-extrabold text-violet-600"
                         >
                           View saved leads →
@@ -357,6 +392,22 @@ function Input({ label, value, onChange, placeholder }) {
         className="control mt-2 w-full normal-case tracking-normal"
       />
     </label>
+  );
+}
+function ReviewButton({ job, reviewing, onReview }) {
+  return (
+    <button
+      type="button"
+      disabled={reviewing}
+      onClick={() => onReview(job, !job.reviewed_at)}
+      className={`rounded-lg px-2 py-1 text-[10px] font-extrabold ${job.reviewed_at ? "bg-emerald-50 text-emerald-700" : "bg-zinc-100 text-zinc-600"}`}
+    >
+      {reviewing
+        ? "Saving…"
+        : job.reviewed_at
+          ? "Reviewed"
+          : "Mark reviewed"}
+    </button>
   );
 }
 function Status({ status }) {

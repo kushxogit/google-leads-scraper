@@ -13,9 +13,9 @@ const frontendOrigins = (process.env.FRONTEND_URL || "")
 app.use(
   cors(
     frontendOrigins.length
-      ? { origin: frontendOrigins, methods: ["GET", "POST", "OPTIONS"] }
+      ? { origin: frontendOrigins, methods: ["GET", "POST", "PATCH", "OPTIONS"] }
       : process.env.NODE_ENV === "production"
-        ? { origin: false, methods: ["GET", "POST", "OPTIONS"] }
+        ? { origin: false, methods: ["GET", "POST", "PATCH", "OPTIONS"] }
         : {},
   ),
 );

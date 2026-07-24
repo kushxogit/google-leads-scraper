@@ -1,25 +1,26 @@
-# Design QA — Rewind Plan Day
+# Design QA — Pipeline Command Center
 
-- Source visual truth: `C:\Users\Kushagra\.codex\generated_images\019f8689-80fc-7b13-884c-8c030bf7443e\exec-350faf65-b64d-4895-89a5-f2d185d74e88.png`
-- Intended implementation viewport: mobile-first responsive web app; desktop expands at the `lg` breakpoint.
-- State: Rewind Day map with planned tasks, unscheduled tasks, and inferred schedule suggestions.
+- Source visual target: `C:\Users\Kushagra\.codex\generated_images\019f94ec-0743-7471-9e24-6ad2bc859c3e\exec-fe50141b-d1cd-4ee1-a4c9-0cb96cd9cf31.png`
+- Implementation surface: `frontend/src/pages/LeadsTable.jsx`
+- Intended viewport: desktop-first responsive web app; compact five-stage board with a selected-opportunity panel.
+- Current state: implementation complete; visual comparison pending.
 
 ## Blocker
 
-No browser surface is available in this session to launch the local implementation, capture its rendered mobile and desktop states, check console errors, or perform the required visual comparison. Build and lint checks are recorded separately, but they do not substitute for browser-rendered QA.
+The in-app browser surface was unavailable in this session. I could not capture the rendered Pipeline page at desktop and mobile widths, inspect browser console output, or compare the implementation against the selected visual target.
+
+HTTP preview, build, lint, and diff checks do not substitute for browser-rendered QA.
 
 ## Findings
 
 - [P1] Browser-rendered responsive comparison is pending.
-  - Location: Rewind Day map.
-  - Evidence: source image is available; implementation capture is unavailable.
-  - Fix: launch the frontend, capture mobile and desktop Rewind states, then compare against the source visual before calling QA complete.
+  - Location: Pipeline board and selected-opportunity panel.
+  - Fix: open the local preview, capture the Pipeline route at a wide desktop viewport and a narrow mobile viewport, then compare spacing, column density, panel overflow, and interaction states against the selected concept.
 
-## Implementation checklist
+## Automated checks
 
-- Verify the mobile stacked agenda and inbox at a 390px viewport.
-- Verify the desktop two-pane planner at 1440px.
-- Test one-tap scheduling for `2 PM`, `tomorrow`, and `23 July` task text.
-- Check browser console and task opening/scheduling interactions.
+- `npm run lint` — passed.
+- `npm run build` — passed.
+- `GET http://localhost:4173/` — returned HTTP 200.
 
 final result: blocked

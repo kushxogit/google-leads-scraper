@@ -118,23 +118,52 @@ export default function Rewind() {
     view === "week"
       ? Array.from({ length: 7 }, (_, index) => addDays(range.start, index))
       : [cursor];
+
+  const populateAllUnscheduledTasks = async () => {
+    let currentHour = 9;
+    const dayStart = startOfDay(cursor);
+    for (const task of unplanned) {
+      const start = new Date(dayStart);
+      const wholeHour = Math.floor(currentHour);
+      const minutes = Math.round((currentHour - wholeHour) * 60);
+      start.setHours(wholeHour, minutes, 0, 0);
+
+      const isCallTask =
+        task.category === "call" ||
+        task.category === "follow_up" ||
+        /call|phone|contact|dial|follow/i.test(task.title || "");
+
+      const durationMins = isCallTask ? 10 : 30;
+      const end = new Date(start.getTime() + durationMins * 60000);
+
+      await taskApi.updateTask(task.id, {
+        scheduled_start: start.toISOString(),
+        scheduled_end: end.toISOString(),
+        status: "planned",
+      });
+
+      currentHour += durationMins / 60;
+      if (currentHour >= 18) currentHour = 9;
+    }
+  };
+
   const schedule = async (taskId, day, hour = 9) => {
     const start = new Date(day);
     const wholeHour = Math.floor(hour);
     start.setHours(wholeHour, Math.round((hour - wholeHour) * 60), 0, 0);
     const existing = taskApi.tasks.find((task) => task.id === taskId);
-    const duration =
-      existing?.scheduled_start && existing?.scheduled_end
-        ? Math.max(
-            30 * 60000,
-            new Date(existing.scheduled_end) -
-              new Date(existing.scheduled_start),
-          )
-        : 60 * 60000;
+    const isCallTask =
+      existing?.category === "call" ||
+      existing?.category === "follow_up" ||
+      /call|phone|contact|dial|follow/i.test(existing?.title || "");
+
+    const duration = isCallTask ? 10 * 60000 : 30 * 60000;
     const end = new Date(start.getTime() + duration);
     const conflict = (calendar.data ?? []).some(
       (event) =>
-        new Date(event.starts_at) < end && new Date(event.ends_at) > start,
+        event.task_id !== taskId &&
+        new Date(event.starts_at) < end &&
+        new Date(event.ends_at) > start,
     );
     if (
       conflict &&
@@ -159,104 +188,135 @@ export default function Rewind() {
     return <div className="panel p-8 text-zinc-500">Opening your day…</div>;
   return (
     <div className="mx-auto max-w-[1500px] space-y-4 pb-8">
-      <header className="relative overflow-hidden rounded-[30px] bg-[#171719] p-6 text-white shadow-[0_20px_50px_rgba(50,35,105,.22)] sm:p-7">
-        <div className="absolute -right-12 -top-20 h-64 w-64 rounded-full bg-violet-500/70 blur-[72px]" />
-        <div className="absolute right-[28%] top-0 h-32 w-32 rounded-full bg-cyan-400/20 blur-[55px]" />
-        <div className="relative flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
+      {/* Clean Un-congested Header */}
+      <header className="rounded-2xl border border-zinc-200/90 bg-white p-5 shadow-2xs">
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <div>
-            <div className="flex items-center gap-2 text-[10px] font-extrabold uppercase tracking-[.18em] text-violet-200">
-              <RotateCcw size={13} /> Rewind
+            <div className="flex items-center gap-2 text-[11px] font-extrabold uppercase tracking-wider text-violet-700">
+              <CalendarClock size={14} /> Today's Focus & Schedule
             </div>
-            <h1 className="mt-3 text-4xl font-extrabold tracking-[-.06em] sm:text-5xl">
-              Own the day.
+            <h1 className="mt-1 text-2xl font-black tracking-tight text-zinc-950 sm:text-3xl">
+              {format(cursor, "EEEE, MMMM d, yyyy")}
             </h1>
-            <p className="mt-2 text-sm text-zinc-300">
-              Calls, delivery, and every next move in one shared rhythm.
+            <p className="mt-1 text-xs text-zinc-500 font-medium">
+              Calls, tasks, meetings, and lead follow-ups in one clear rhythm.
             </p>
           </div>
-          <button
-            onClick={() => {
-              setEditing(null);
-              setModalOpen(true);
-            }}
-            className="inline-flex items-center justify-center gap-2 rounded-2xl bg-white px-4 py-3 text-sm font-extrabold text-zinc-950"
-          >
-            <Plus size={17} /> Add task
-          </button>
+
+          <div className="flex items-center gap-2">
+            {unplanned.length > 0 && (
+              <button
+                onClick={populateAllUnscheduledTasks}
+                className="button-primary py-2.5 px-4 text-xs font-black bg-gradient-to-r from-violet-600 to-indigo-600 text-white rounded-xl shadow-xs gap-1.5"
+              >
+                <Sparkles size={15} /> Populate All {unplanned.length} Tasks
+              </button>
+            )}
+            <button
+              onClick={() => {
+                setEditing(null);
+                setModalOpen(true);
+              }}
+              className="button-primary liquid-button py-2.5 px-4 text-xs font-extrabold gap-2 rounded-xl bg-violet-600 hover:bg-violet-700 text-white shadow-sm"
+            >
+              <Plus size={16} /> New Task
+            </button>
+          </div>
+        </div>
+
+        {/* Today Summary Metrics Row */}
+        <div className="mt-4 grid grid-cols-2 sm:grid-cols-4 gap-3 border-t border-zinc-100 pt-4">
+          <div className="rounded-xl bg-zinc-50 p-3 border border-zinc-200/60">
+            <p className="text-[10px] font-extrabold uppercase tracking-wider text-zinc-400">Planned Tasks</p>
+            <p className="text-lg font-black text-zinc-950 mt-0.5">{planned.length}</p>
+          </div>
+          <div className="rounded-xl bg-zinc-50 p-3 border border-zinc-200/60">
+            <p className="text-[10px] font-extrabold uppercase tracking-wider text-zinc-400">Unscheduled</p>
+            <p className="text-lg font-black text-amber-700 mt-0.5">{unplanned.length}</p>
+          </div>
+          <div className="rounded-xl bg-zinc-50 p-3 border border-zinc-200/60">
+            <p className="text-[10px] font-extrabold uppercase tracking-wider text-zinc-400">Calendar Events</p>
+            <p className="text-lg font-black text-violet-700 mt-0.5">{(calendar.data ?? []).length}</p>
+          </div>
+          <div className="rounded-xl bg-zinc-50 p-3 border border-zinc-200/60">
+            <p className="text-[10px] font-extrabold uppercase tracking-wider text-zinc-400">Active View</p>
+            <p className="text-lg font-black text-zinc-900 capitalize mt-0.5">{view}</p>
+          </div>
         </div>
       </header>
-      <section className="panel flex flex-wrap items-center gap-2 p-3">
-        <div className="scrollbar-hide flex w-full overflow-x-auto rounded-2xl bg-zinc-100 p-1 sm:w-auto">
-          {[
-            ["map", "Day map"],
-            ["today", "Timeline"],
-            ["week", "Week"],
-            ["team", "Team"],
-          ].map(([key, label]) => (
+
+      {/* Navigation Toolbar */}
+      <section className="panel flex flex-wrap items-center justify-between gap-3 p-3 bg-white border border-zinc-200/90 shadow-2xs rounded-2xl">
+        <div className="flex items-center gap-2 flex-wrap">
+          <div className="scrollbar-hide flex overflow-x-auto rounded-xl bg-zinc-100 p-0.5">
+            {[
+              ["map", "Day map"],
+              ["today", "Timeline"],
+              ["week", "Week"],
+              ["team", "Team"],
+            ].map(([key, label]) => (
+              <button
+                key={key}
+                onClick={() => setView(key)}
+                className={`shrink-0 rounded-lg px-3 py-1.5 text-xs font-extrabold transition ${
+                  view === key ? "bg-white text-zinc-950 shadow-2xs" : "text-zinc-500 hover:text-zinc-900"
+                }`}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
+
+          <div className="flex items-center gap-1">
             <button
-              key={key}
-              onClick={() => setView(key)}
-              className={`shrink-0 rounded-xl px-3 py-2 text-xs font-extrabold ${view === key ? "bg-white text-violet-700 shadow-sm" : "text-zinc-500"}`}
+              aria-label="Previous"
+              onClick={() => setCursor(addDays(cursor, view === "week" ? -7 : -1))}
+              className="grid h-8 w-8 place-items-center rounded-lg border border-zinc-200 bg-white text-zinc-700 hover:bg-zinc-50 shadow-2xs"
             >
-              {label}
+              <ChevronLeft size={15} />
             </button>
-          ))}
+            <button
+              onClick={() => setCursor(startOfDay(new Date()))}
+              className="rounded-lg border border-zinc-200 bg-white px-3 py-1.5 text-xs font-extrabold text-zinc-800 hover:bg-zinc-50 shadow-2xs"
+            >
+              Today
+            </button>
+            <button
+              aria-label="Next"
+              onClick={() => setCursor(addDays(cursor, view === "week" ? 7 : 1))}
+              className="grid h-8 w-8 place-items-center rounded-lg border border-zinc-200 bg-white text-zinc-700 hover:bg-zinc-50 shadow-2xs"
+            >
+              <ChevronRight size={15} />
+            </button>
+          </div>
         </div>
-        <div className="flex items-center gap-1 sm:ml-1">
-          <button
-            aria-label="Previous"
-            onClick={() =>
-              setCursor(addDays(cursor, view === "week" ? -7 : -1))
-            }
-            className="grid h-9 w-9 place-items-center rounded-xl hover:bg-zinc-100"
+
+        <div className="flex items-center gap-2 ml-auto">
+          <select
+            value={owner}
+            onChange={(e) => setOwner(e.target.value)}
+            className="control rounded-xl border border-zinc-200 bg-white px-3 py-1.5 text-xs font-semibold text-zinc-800 outline-none"
           >
-            <ChevronLeft size={17} />
-          </button>
-          <button
-            onClick={() => setCursor(startOfDay(new Date()))}
-            className="rounded-xl px-3 py-2 text-xs font-bold hover:bg-zinc-100"
+            <option value="all">Everyone</option>
+            {taskApi.members.map((member) => (
+              <option key={member.id} value={member.id}>
+                {member.id === user.id ? "My work" : member.full_name || member.email}
+              </option>
+            ))}
+          </select>
+          <select
+            value={category}
+            onChange={(e) => setCategory(e.target.value)}
+            className="control rounded-xl border border-zinc-200 bg-white px-3 py-1.5 text-xs font-semibold text-zinc-800 outline-none"
           >
-            Today
-          </button>
-          <button
-            aria-label="Next"
-            onClick={() => setCursor(addDays(cursor, view === "week" ? 7 : 1))}
-            className="grid h-9 w-9 place-items-center rounded-xl hover:bg-zinc-100"
-          >
-            <ChevronRight size={17} />
-          </button>
+            <option value="all">All categories</option>
+            {Object.entries(TASK_CATEGORIES).map(([key, item]) => (
+              <option key={key} value={key}>
+                {item.label}
+              </option>
+            ))}
+          </select>
         </div>
-        <p className="order-last w-full text-sm font-extrabold sm:order-none sm:w-auto sm:min-w-[170px]">
-          {view === "week"
-            ? `${format(range.start, "MMM d")} – ${format(range.end, "MMM d, yyyy")}`
-            : format(cursor, "EEEE, MMMM d")}
-        </p>
-        <select
-          value={owner}
-          onChange={(e) => setOwner(e.target.value)}
-          className="control flex-1 py-2 text-xs sm:ml-auto sm:flex-none"
-        >
-          <option value="all">Everyone</option>
-          {taskApi.members.map((member) => (
-            <option key={member.id} value={member.id}>
-              {member.id === user.id
-                ? "My work"
-                : member.full_name || member.email}
-            </option>
-          ))}
-        </select>
-        <select
-          value={category}
-          onChange={(e) => setCategory(e.target.value)}
-          className="control flex-1 py-2 text-xs sm:flex-none"
-        >
-          <option value="all">All categories</option>
-          {Object.entries(TASK_CATEGORIES).map(([key, item]) => (
-            <option key={key} value={key}>
-              {item.label}
-            </option>
-          ))}
-        </select>
       </section>
       {view === "map" ? (
         <PlanDay
@@ -493,7 +553,23 @@ function PlanDay({
   onOpen,
   onSchedule,
 }) {
-  const entries = [
+  // Auto-schedule all unscheduled tasks across the day (10-min slots for calls, 30-min for others)
+  const autoScheduleAll = async () => {
+    let currentHour = 9;
+    for (const task of unplanned) {
+      const isCallTask =
+        task.category === "call" ||
+        task.category === "follow_up" ||
+        /call|phone|contact|dial|follow/i.test(task.title || "");
+
+      const durationMins = isCallTask ? 10 : 30;
+      await onSchedule(task.id, day, currentHour);
+      currentHour += durationMins / 60;
+      if (currentHour >= 18) currentHour = 9;
+    }
+  };
+
+  const plannedEntries = [
     ...events.map((event) => ({
       id: `event-${event.id}`,
       type: "event",
@@ -514,14 +590,43 @@ function PlanDay({
   ]
     .filter((entry) => isSameDay(new Date(entry.startsAt), day))
     .sort((a, b) => new Date(a.startsAt) - new Date(b.startsAt));
+
+  // If no planned entries, convert unplanned tasks to agenda items (10-min slots for call tasks)
+  const allEntries = plannedEntries.length > 0
+    ? plannedEntries
+    : unplanned.map((task, idx) => {
+        const dummyStart = new Date(day);
+        const totalMinutesOffset = idx * 10;
+        dummyStart.setHours(9 + Math.floor(totalMinutesOffset / 60), totalMinutesOffset % 60, 0, 0);
+
+        const isCallTask =
+          task.category === "call" ||
+          task.category === "follow_up" ||
+          /call|phone|contact|dial|follow/i.test(task.title || "");
+
+        const durationMins = isCallTask ? 10 : 30;
+
+        return {
+          id: task.id,
+          type: "task",
+          title: task.title,
+          startsAt: dummyStart.toISOString(),
+          endsAt: new Date(dummyStart.getTime() + durationMins * 60000).toISOString(),
+          category: task.category,
+          task,
+        };
+      });
+
   const reference = isSameDay(day, new Date()) ? new Date() : startOfDay(day);
-  const nextIndex = entries.findIndex(
+  const nextIndex = allEntries.findIndex(
     (entry) => new Date(entry.endsAt || entry.startsAt) >= reference,
   );
-  const current = nextIndex > 0 ? entries.slice(0, nextIndex) : [];
-  const upcoming = nextIndex >= 0 ? entries.slice(nextIndex, nextIndex + 3) : [];
-  const later = nextIndex >= 0 ? entries.slice(nextIndex + 3) : entries;
-  const minutes = entries.reduce(
+
+  const current = nextIndex > 0 ? allEntries.slice(0, nextIndex) : [];
+  const upcoming = nextIndex >= 0 ? allEntries.slice(nextIndex, nextIndex + 4) : allEntries.slice(0, 4);
+  const later = nextIndex >= 0 ? allEntries.slice(nextIndex + 4) : allEntries.slice(4);
+
+  const minutes = allEntries.reduce(
     (total, entry) =>
       total +
       (entry.endsAt
@@ -529,45 +634,157 @@ function PlanDay({
         : 60),
     0,
   );
+
   return (
-    <section className="panel overflow-hidden">
-      <div className="grid min-w-0 lg:grid-cols-[minmax(0,1fr)_320px]">
+    <section className="panel overflow-hidden border border-zinc-200/90 rounded-2xl bg-white shadow-2xs">
+      <div className="grid min-w-0 lg:grid-cols-[minmax(0,1fr)_340px]">
         <main className="min-w-0 p-4 sm:p-6 lg:p-7">
-          <div className="flex flex-col gap-4 border-b border-zinc-100 pb-5 sm:flex-row sm:items-start sm:justify-between">
+          <div className="flex flex-col gap-4 border-b border-zinc-100 pb-5 sm:flex-row sm:items-center sm:justify-between">
             <div>
-              <p className="eyebrow">Daily agenda</p>
-              <h2 className="mt-1 text-2xl font-extrabold tracking-[-.04em] sm:text-3xl">Plan your day</h2>
-              <p className="mt-2 max-w-md text-sm text-zinc-500">A calm order of work, with the next commitment always clear.</p>
+              <p className="eyebrow">Daily Schedule & Action Plan</p>
+              <h2 className="mt-1 text-2xl font-black text-zinc-950 sm:text-3xl">Plan & Focus Your Day</h2>
+              <p className="mt-1 max-w-md text-xs font-semibold text-zinc-500">
+                {plannedEntries.length > 0
+                  ? "All commitments scheduled for today in clear rhythm."
+                  : `Showing ${allEntries.length} pending tasks auto-prioritized for your attention.`}
+              </p>
             </div>
-            <div className="flex items-center gap-3 rounded-2xl bg-violet-50 px-3 py-2 text-xs font-extrabold text-violet-700">
-              <CheckCircle2 size={16} /> {entries.length} planned
-              <span className="h-4 w-px bg-violet-200" /> {formatDuration(minutes)} scheduled
+
+            <div className="flex flex-wrap items-center gap-2">
+              {unplanned.length > 0 && (
+                <button
+                  onClick={autoScheduleAll}
+                  className="button-primary py-2 px-3.5 text-xs font-black bg-gradient-to-r from-violet-600 to-indigo-600 text-white rounded-xl shadow-xs gap-1.5"
+                >
+                  <Sparkles size={14} /> Auto-Plan All {unplanned.length} Tasks
+                </button>
+              )}
+
+              <div className="flex items-center gap-2 rounded-xl bg-violet-50 px-3 py-2 text-xs font-extrabold text-violet-700 border border-violet-100">
+                <CheckCircle2 size={15} /> {allEntries.length} Tasks Today
+              </div>
             </div>
           </div>
-          <div className="mt-5 space-y-7">
-            <AgendaSection label="Now" detail={isSameDay(day, new Date()) ? format(new Date(), "h:mm a") : format(day, "EEEE")} entries={current} onOpen={onOpen} empty="Nothing before your next commitment." />
-            <AgendaSection label="Up next" detail="The work that needs your attention first" entries={upcoming} onOpen={onOpen} empty="Your next task will appear here." />
-            <AgendaSection label="Later" detail="Keep the rest of the day light and intentional" entries={later} onOpen={onOpen} empty="No more timed work for this day." />
-            <div className="rounded-2xl border border-dashed border-violet-200 bg-violet-50/40 px-4 py-3 text-sm text-violet-800"><span className="font-extrabold">Open space.</span> Schedule a task from your inbox when you are ready to protect time for it.</div>
+
+          <div className="mt-6 space-y-7">
+            <AgendaSection
+              label="Active & Priority Now"
+              detail={isSameDay(day, new Date()) ? format(new Date(), "h:mm a") : format(day, "EEEE")}
+              entries={current.length > 0 ? current : upcoming.slice(0, 1)}
+              onOpen={onOpen}
+              empty="No active task right now."
+            />
+
+            <AgendaSection
+              label="Up Next for Today"
+              detail="Tasks and lead follow-ups requiring immediate attention"
+              entries={current.length > 0 ? upcoming : upcoming.slice(1)}
+              onOpen={onOpen}
+              empty="All upcoming tasks completed!"
+            />
+
+            {later.length > 0 && (
+              <AgendaSection
+                label="Later Today"
+                detail="Planned for later in the day"
+                entries={later}
+                onOpen={onOpen}
+                empty="No more timed work for today."
+              />
+            )}
           </div>
         </main>
-        <aside className="flex max-h-[760px] flex-col border-t border-zinc-100 bg-zinc-50/60 p-4 sm:p-6 lg:border-l lg:border-t-0">
+
+        {/* Right Inbox Sidebar */}
+        <aside className="flex max-h-[820px] flex-col border-t border-zinc-100 bg-zinc-50/70 p-4 sm:p-5 lg:border-l lg:border-t-0">
           <div className="flex items-center gap-3">
-            <span className="grid h-10 w-10 place-items-center rounded-2xl bg-white text-violet-600 shadow-sm"><Inbox size={18} /></span>
-            <div><p className="font-extrabold">Inbox</p><p className="text-xs text-zinc-400">Unscheduled tasks and notes</p></div>
-            <span className="mono ml-auto text-xs text-zinc-400">{unplanned.length}</span>
+            <span className="grid h-10 w-10 place-items-center rounded-2xl bg-white text-violet-600 shadow-2xs border border-zinc-200/80">
+              <Inbox size={18} />
+            </span>
+            <div>
+              <p className="font-extrabold text-zinc-950 text-sm">Unscheduled Queue</p>
+              <p className="text-[11px] text-zinc-400 font-semibold">Lead tasks & follow-ups</p>
+            </div>
+            <span className="mono ml-auto text-xs font-black text-violet-700 bg-violet-100 px-2 py-0.5 rounded-full border border-violet-200">
+              {unplanned.length}
+            </span>
           </div>
-          {suggestions.length > 0 && <div className="mt-5 rounded-2xl border border-violet-100 bg-white p-3"><div className="flex items-center gap-2 text-xs font-extrabold text-violet-700"><Sparkles size={15} /> Time found in your tasks</div><p className="mt-1 text-xs leading-5 text-zinc-500">Review a suggestion, then add it to your day in one tap.</p></div>}
-          <div className="mt-3 min-h-0 flex-1 space-y-3 overflow-y-auto pr-1">
+
+          {suggestions.length > 0 && (
+            <div className="mt-4 rounded-xl border border-violet-100 bg-white p-3 shadow-2xs">
+              <div className="flex items-center gap-1.5 text-xs font-extrabold text-violet-700">
+                <Sparkles size={14} /> AI Time Suggestions
+              </div>
+              <p className="mt-0.5 text-[11px] text-zinc-500 font-medium">
+                1-tap to lock suggested times into your calendar.
+              </p>
+            </div>
+          )}
+
+          <div className="mt-3 min-h-0 flex-1 space-y-2.5 overflow-y-auto pr-1">
             {unplanned.map((task) => {
               const suggestion = suggestions.find((item) => item.task.id === task.id)?.suggestion;
               const category = TASK_CATEGORIES[task.category] ?? TASK_CATEGORIES.development;
-              return <article key={task.id} className="rounded-2xl border border-zinc-200 bg-white p-3 shadow-sm">
-                <button onClick={() => onOpen(task)} className="w-full text-left"><div className="flex items-center gap-2"><span className={`h-2 w-2 rounded-full ${category.dot}`} /><span className="text-[10px] font-extrabold uppercase tracking-[.12em] text-zinc-400">{category.label}</span></div><p className="mt-2 line-clamp-2 text-sm font-extrabold leading-5 text-zinc-900">{task.title}</p>{task.description && <p className="mt-1 line-clamp-2 text-xs leading-5 text-zinc-500">{task.description}</p>}{task.leads?.name && <p className="mt-2 truncate text-xs font-bold text-violet-700">Opportunity: {task.leads.name}</p>}</button>
-                {suggestion?.isClear ? <div className="mt-3 flex items-center justify-between gap-2 rounded-xl bg-violet-50 px-2.5 py-2"><span className="min-w-0 text-xs font-bold text-violet-800"><CalendarClock className="mr-1 inline" size={13} />{suggestion.label}</span><button onClick={() => onSchedule(task.id, suggestion.day, suggestion.hour)} className="shrink-0 rounded-lg bg-violet-600 px-2.5 py-1.5 text-xs font-extrabold text-white hover:bg-violet-700">Schedule now</button></div> : suggestion ? <div className="mt-3 rounded-xl bg-amber-50 px-3 py-2 text-xs text-amber-800"><p><strong>I found “{suggestion.sourceText}”.</strong> Choose a time before I schedule it.</p><button onClick={() => onOpen(task)} className="mt-2 font-extrabold text-violet-700">Choose a time</button></div> : <div className="mt-3 grid grid-cols-2 gap-2"><button onClick={() => onSchedule(task.id, day, 9)} className="rounded-lg bg-violet-600 px-2 py-2 text-xs font-extrabold text-white">Today 9 AM</button><button onClick={() => onSchedule(task.id, addDays(day, 1), 9)} className="rounded-lg bg-violet-100 px-2 py-2 text-xs font-extrabold text-violet-700">Tomorrow 9 AM</button></div>}
-              </article>;
+              return (
+                <article
+                  key={task.id}
+                  className="rounded-2xl border border-zinc-200/90 bg-white p-3.5 shadow-2xs hover:border-violet-300 transition"
+                >
+                  <button onClick={() => onOpen(task)} className="w-full text-left">
+                    <div className="flex items-center justify-between gap-2">
+                      <div className="flex items-center gap-1.5">
+                        <span className={`h-2 w-2 rounded-full ${category.dot}`} />
+                        <span className="text-[9px] font-extrabold uppercase tracking-wider text-zinc-400">
+                          {category.label}
+                        </span>
+                      </div>
+                      {task.priority && (
+                        <span className="text-[9px] font-extrabold uppercase text-amber-700 bg-amber-50 px-1.5 py-0.2 rounded border border-amber-100">
+                          {task.priority}
+                        </span>
+                      )}
+                    </div>
+
+                    <p className="mt-2 line-clamp-2 text-xs font-extrabold leading-4 text-zinc-900">
+                      {task.title}
+                    </p>
+
+                    {task.leads?.name && (
+                      <p className="mt-1.5 truncate text-[11px] font-bold text-violet-700">
+                        Opportunity: {task.leads.name}
+                      </p>
+                    )}
+                  </button>
+
+                  {/* 1-Tap Quick Schedule Buttons */}
+                  <div className="mt-3 flex items-center gap-1.5 pt-2 border-t border-zinc-100">
+                    <button
+                      onClick={() => onSchedule(task.id, day, 9)}
+                      className="flex-1 rounded-lg bg-violet-50 hover:bg-violet-100 px-2 py-1.2 text-[10px] font-extrabold text-violet-700 transition"
+                    >
+                      Today 9 AM
+                    </button>
+                    <button
+                      onClick={() => onSchedule(task.id, day, 14)}
+                      className="flex-1 rounded-lg bg-violet-50 hover:bg-violet-100 px-2 py-1.2 text-[10px] font-extrabold text-violet-700 transition"
+                    >
+                      Today 2 PM
+                    </button>
+                    <button
+                      onClick={() => onSchedule(task.id, addDays(day, 1), 9)}
+                      className="flex-1 rounded-lg bg-zinc-100 hover:bg-zinc-200 px-2 py-1.2 text-[10px] font-extrabold text-zinc-700 transition"
+                    >
+                      Tomorrow
+                    </button>
+                  </div>
+                </article>
+              );
             })}
-            {!unplanned.length && <div className="rounded-2xl border border-dashed border-zinc-200 p-5 text-center text-sm text-zinc-400">Everything has a time.</div>}
+            {!unplanned.length && (
+              <div className="rounded-2xl border border-dashed border-zinc-200 p-6 text-center text-xs font-bold text-zinc-400">
+                All tasks are scheduled! 🎉
+              </div>
+            )}
           </div>
         </aside>
       </div>

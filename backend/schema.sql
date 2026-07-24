@@ -51,6 +51,8 @@ CREATE TABLE IF NOT EXISTS scrape_jobs (
 
   error_message TEXT,
 
+  reviewed_at TEXT,
+
   created_at TEXT DEFAULT CURRENT_TIMESTAMP,
   started_at TEXT,
   finished_at TEXT

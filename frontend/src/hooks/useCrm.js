@@ -215,6 +215,14 @@ export function useLeadDetail(leadId) {
           .order("created_at", { ascending: false }),
       ),
   });
+  const timeline = useQuery({
+    queryKey: ["lead-timeline", leadId],
+    enabled: Boolean(leadId),
+    queryFn: () =>
+      requireResult(
+        supabase.rpc("get_lead_timeline", { p_lead_id: leadId }),
+      ),
+  });
   const members = useQuery({
     queryKey: ["members", activeWorkspaceId],
     enabled: Boolean(activeWorkspaceId),
@@ -256,7 +264,7 @@ export function useLeadDetail(leadId) {
       void supabase.removeChannel(channel);
     };
   }, [client, leadId]);
-  return { lead, notes, activity, members };
+  return { lead, notes, activity, timeline, members };
 }
 
 export function useWorkspaceMembers() {
@@ -291,4 +299,123 @@ export async function trackWhatsAppClick(leadId) {
   return requireResult(
     supabase.rpc("record_whatsapp_click", { p_lead_id: leadId }),
   );
+}
+
+export async function trackOutreachDraft(leadId, channel) {
+  return requireResult(
+    supabase.rpc("record_lead_outreach_action", {
+      p_lead_id: leadId,
+      p_channel: channel,
+    }),
+  );
+}
+
+export function useWorkspaceLeadTags() {
+  const { activeWorkspaceId } = useAuthWorkspace();
+  const client = useQueryClient();
+  const key = ["lead-tags", activeWorkspaceId];
+  const query = useQuery({
+    queryKey: key,
+    enabled: Boolean(activeWorkspaceId),
+    queryFn: async () => {
+      const [tags, links] = await Promise.all([
+        requireResult(
+          supabase
+            .from("workspace_lead_tags")
+            .select("*")
+            .eq("workspace_id", activeWorkspaceId)
+            .order("name"),
+        ),
+        requireResult(
+          supabase
+            .from("lead_tag_links")
+            .select("lead_id, tag_id")
+            .eq("workspace_id", activeWorkspaceId),
+        ),
+      ]);
+      return tags.map((tag) => ({
+        ...tag,
+        lead_ids: links
+          .filter((link) => link.tag_id === tag.id)
+          .map((link) => link.lead_id),
+      }));
+    },
+  });
+  const refresh = () => client.invalidateQueries({ queryKey: key });
+  const createTag = async ({ name, color = "violet" }) => {
+    const tag = await requireResult(
+      supabase
+        .from("workspace_lead_tags")
+        .insert({ workspace_id: activeWorkspaceId, name: name.trim(), color })
+        .select()
+        .single(),
+    );
+    await refresh();
+    return tag;
+  };
+  const setLeadTags = async (leadId, tagIds) => {
+    await requireResult(
+      supabase
+        .from("lead_tag_links")
+        .delete()
+        .eq("workspace_id", activeWorkspaceId)
+        .eq("lead_id", leadId),
+    );
+    if (tagIds.length) {
+      await requireResult(
+        supabase.from("lead_tag_links").insert(
+          [...new Set(tagIds)].map((tagId) => ({
+            workspace_id: activeWorkspaceId,
+            lead_id: leadId,
+            tag_id: tagId,
+          })),
+        ),
+      );
+    }
+    await refresh();
+  };
+  return { ...query, tags: query.data ?? [], createTag, setLeadTags };
+}
+
+export function usePipelineViews() {
+  const { activeWorkspaceId, user } = useAuthWorkspace();
+  const client = useQueryClient();
+  const key = ["pipeline-views", activeWorkspaceId, user?.id];
+  const query = useQuery({
+    queryKey: key,
+    enabled: Boolean(activeWorkspaceId && user),
+    queryFn: () =>
+      requireResult(
+        supabase
+          .from("saved_pipeline_views")
+          .select("*")
+          .eq("workspace_id", activeWorkspaceId)
+          .order("updated_at", { ascending: false }),
+      ),
+  });
+  const refresh = () => client.invalidateQueries({ queryKey: key });
+  const createView = async ({ name, filters, visibility = "personal" }) => {
+    const view = await requireResult(
+      supabase
+        .from("saved_pipeline_views")
+        .insert({
+          workspace_id: activeWorkspaceId,
+          created_by: user.id,
+          name: name.trim(),
+          filters,
+          visibility,
+        })
+        .select()
+        .single(),
+    );
+    await refresh();
+    return view;
+  };
+  const deleteView = async (id) => {
+    await requireResult(
+      supabase.from("saved_pipeline_views").delete().eq("id", id),
+    );
+    await refresh();
+  };
+  return { ...query, views: query.data ?? [], createView, deleteView };
 }

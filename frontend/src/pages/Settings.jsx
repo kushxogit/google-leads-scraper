@@ -42,8 +42,18 @@ export default function Settings() {
       { body: { action, workspace_id: activeWorkspaceId } },
     );
     setCalendarBusy(false);
-    if (error || data?.error)
-      return setCalendarMessage(data?.error || error.message);
+    if (error || data?.error) {
+      const errMsg = data?.error || error?.message || "";
+      if (
+        errMsg.includes("Failed to send a request") ||
+        errMsg.includes("FunctionsFetchError")
+      ) {
+        return setCalendarMessage(
+          "The 'google-calendar-auth' Edge Function is not deployed to your Supabase Cloud project yet (or environment secrets are missing). Deploy it via `supabase functions deploy google-calendar-auth`.",
+        );
+      }
+      return setCalendarMessage(errMsg);
+    }
     if (action === "start") return window.location.assign(data.url);
     setCalendarMessage(
       action === "sync"
