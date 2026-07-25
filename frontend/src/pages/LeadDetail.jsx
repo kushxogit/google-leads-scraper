@@ -35,6 +35,8 @@ import { useAuthWorkspace } from "../context/authWorkspace";
 import TaskModal from "../components/TaskModal";
 import { TASK_CATEGORIES, useWorkspaceTasks, useTaskProjects } from "../hooks/useTasks";
 import { useFeedback } from "../context/feedback";
+import LeadEditModal from "../components/LeadEditModal";
+import { Edit2 } from "lucide-react";
 
 export default function LeadDetail() {
   const { id } = useParams();
@@ -54,6 +56,10 @@ export default function LeadDetail() {
   const [previewOpen, setPreviewOpen] = useState(false);
   const [newTag, setNewTag] = useState("");
   const [tagBusy, setTagBusy] = useState(false);
+  const [uploading, setUploading] = useState(false);
+  const [attachments, setAttachments] = useState([]);
+  const [note, setNote] = useState("");
+  const [editModalOpen, setEditModalOpen] = useState(false);
   const taskOrder = (a, b) => new Date(a.due_date) - new Date(b.due_date);
   const current = lead.data;
   const leadTasks = taskApi.tasks.filter((task) => task.lead_id === id);
@@ -358,6 +364,14 @@ export default function LeadDetail() {
             </select>
 
             <button
+              onClick={() => setEditModalOpen(true)}
+              className="inline-flex h-10 items-center justify-center gap-2 rounded-2xl border border-zinc-200 bg-white px-4 text-xs font-extrabold text-zinc-700 hover:bg-zinc-50 hover:text-zinc-900 transition shadow-2xs shrink-0"
+              title="Edit opportunity"
+            >
+              <Edit2 size={16} /> Edit
+            </button>
+
+            <button
               onClick={async () => {
                 if (
                   await confirm({
@@ -381,11 +395,11 @@ export default function LeadDetail() {
         </div>
       </section>
 
-      <div className="grid gap-5 lg:grid-cols-[1.15fr_.85fr]">
-        <main className="space-y-5">
+      <div className="grid gap-6 lg:grid-cols-3">
+        <main className="space-y-6 lg:col-span-2">
           {/* 1-Tap Quick Action & Contact Essentials Banner */}
           <section className="rounded-[24px] border border-zinc-200/90 bg-white p-6 shadow-xs space-y-4">
-            <div className="flex items-center justify-between">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
               <div>
                 <span className="text-[10px] font-extrabold uppercase tracking-wider text-violet-700 bg-violet-50 px-2.5 py-0.5 rounded-full border border-violet-100">
                   Direct Communication
@@ -778,21 +792,31 @@ export default function LeadDetail() {
           </section>
         </aside>
       </div>
-      <TaskModal
-        open={taskOpen}
-        onClose={() => {
-          setTaskOpen(false);
-          setTaskEditing(null);
-        }}
-        onSave={saveTask}
-        members={taskApi.members}
-        defaultOwnerId={taskApi.currentUserId}
-        leads={[current]}
-        initialLeadId={id}
-        initialValues={suggestedTask}
-        task={taskEditing}
-      />
+      {taskOpen && (
+        <TaskModal
+          task={taskEditing}
+          isOpen={taskOpen}
+          onClose={() => {
+            setTaskOpen(false);
+            setTaskEditing(null);
+          }}
+          onSave={saveTask}
+          members={taskApi.members}
+          defaultOwnerId={taskApi.currentUserId}
+          leads={[current]}
+          initialLeadId={id}
+          initialValues={suggestedTask}
+        />
+      )}
       {previewOpen && <OutreachPreview preview={preview} leadName={current.business_name} onClose={() => setPreviewOpen(false)} onConfirm={sendOutreach} />}
+      <LeadEditModal
+        lead={current}
+        isOpen={editModalOpen}
+        onClose={() => setEditModalOpen(false)}
+        onSave={async (updates) => {
+          await updateLead(id, updates);
+        }}
+      />
     </div>
   );
 }
