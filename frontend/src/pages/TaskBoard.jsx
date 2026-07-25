@@ -614,8 +614,8 @@ function TaskCard({ task, members, projects, leads = [], onClick, dragListeners,
           </span>
         )}
         {linkedLead && (
-          <span className="inline-flex items-center gap-1 rounded-md bg-blue-50 px-1.5 py-0.5 text-[10px] font-semibold text-blue-600 border border-blue-100/50 truncate max-w-[140px]">
-            <Link2 size={10} /> {linkedLead.business_name || linkedLead.name}
+          <span className="inline-flex items-center gap-1 rounded-md bg-blue-50 px-1.5 py-0.5 text-[10px] font-semibold text-blue-600 border border-blue-100/50 truncate max-w-full">
+            <Link2 size={10} className="shrink-0" /> <span className="truncate">{linkedLead.business_name || linkedLead.name} {linkedLead.phone ? `(${linkedLead.phone})` : ''}</span>
           </span>
         )}
       </div>
@@ -772,8 +772,8 @@ function ListRow({ task, members, projects, leads = [], onClick, onStatusChange 
 
       {/* Linked lead */}
       {linkedLead && (
-        <span className="hidden md:inline-flex items-center gap-1 rounded-md bg-blue-50 px-1.5 py-0.5 text-[10px] font-semibold text-blue-600 border border-blue-100/50 truncate max-w-[120px]">
-          <Link2 size={10} /> {linkedLead.business_name || linkedLead.name}
+        <span className="hidden md:inline-flex items-center gap-1 rounded-md bg-blue-50 px-1.5 py-0.5 text-[10px] font-semibold text-blue-600 border border-blue-100/50 truncate max-w-xs">
+          <Link2 size={10} className="shrink-0" /> <span className="truncate">{linkedLead.business_name || linkedLead.name} {linkedLead.phone ? `(${linkedLead.phone})` : ''}</span>
         </span>
       )}
 
