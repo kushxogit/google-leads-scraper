@@ -77,7 +77,7 @@ export function useWorkspaceTasks() {
         result(
           supabase
             .from("tasks")
-            .select("*, task_projects(id,name,color,emoji)")
+            .select("*, task_projects(id,name,color,emoji), leads(name,phone,company)")
             .eq("workspace_id", activeWorkspaceId)
             .order("created_at", { ascending: false }),
         ),

@@ -599,8 +599,10 @@ function AgendaRow({ entry, onOpen }) {
   const start = new Date(entry.startsAt);
   const end = entry.endsAt ? new Date(entry.endsAt) : null;
   const leadName = entry.task?.leads?.business_name || entry.task?.leads?.name;
+  const leadPhone = entry.task?.leads?.phone;
+  const leadDisplay = leadName ? (leadPhone ? `${leadName} (${leadPhone})` : leadName) : null;
   
-  const content = <><div className="min-w-0 flex-1"><div className="flex items-center gap-2"><span className={`h-2 w-2 rounded-full ${entry.type === "event" ? "bg-rose-500" : category.dot}`} /><span className="text-[10px] font-extrabold uppercase tracking-[.11em] text-zinc-400">{entry.type === "event" ? "Calendar" : category.label}</span></div><p className="mt-1 truncate text-sm font-extrabold text-zinc-900">{entry.title}</p>{leadName && <p className="mt-1 truncate text-xs font-bold text-violet-700">Opportunity: {leadName}</p>}</div><div className="shrink-0 text-right"><p className="text-xs font-extrabold text-zinc-800">{format(start, "h:mm a")}</p><p className="mt-0.5 text-[11px] text-zinc-400">{end ? formatDuration((end - start) / 60000) : "60 min"}</p></div></>;
+  const content = <><div className="min-w-0 flex-1"><div className="flex items-center gap-2"><span className={`h-2 w-2 rounded-full ${entry.type === "event" ? "bg-rose-500" : category.dot}`} /><span className="text-[10px] font-extrabold uppercase tracking-[.11em] text-zinc-400">{entry.type === "event" ? "Calendar" : category.label}</span></div><p className="mt-1 truncate text-sm font-extrabold text-zinc-900">{entry.title}</p>{leadDisplay && <p className="mt-1 truncate text-xs font-bold text-violet-700">Opportunity: {leadDisplay}</p>}</div><div className="shrink-0 text-right"><p className="text-xs font-extrabold text-zinc-800">{format(start, "h:mm a")}</p><p className="mt-0.5 text-[11px] text-zinc-400">{end ? formatDuration((end - start) / 60000) : "60 min"}</p></div></>;
   if (entry.type === "event") return <article className="flex items-center gap-3 rounded-2xl border border-rose-100 bg-rose-50/70 px-3 py-3">{content}</article>;
   return <button onClick={() => onOpen(entry.task)} className={`flex w-full items-center gap-3 rounded-2xl border px-3 py-3 text-left transition hover:-translate-y-0.5 hover:shadow-md ${category.card}`}>{content}</button>;
 }
@@ -708,7 +710,7 @@ function DayColumn({ day, tasks, events, onOpen }) {
           </span>
           {task.leads && (
             <span className="mt-0.5 block truncate text-[9px] font-bold text-violet-700">
-              {task.leads.business_name || task.leads.name}
+              {task.leads.business_name || task.leads.name} {task.leads.phone ? `(${task.leads.phone})` : ''}
             </span>
           )}
         </button>
