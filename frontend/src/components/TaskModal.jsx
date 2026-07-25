@@ -9,6 +9,7 @@ const empty = {
   category: "development",
   priority: "medium",
   lead_id: "",
+  project_id: "",
   due_at: "",
   scheduled_start: "",
   scheduled_end: "",
@@ -26,6 +27,8 @@ export default function TaskModal({
   initialLeadId = "",
   initialValues,
   task,
+  projects = [],
+  onManageProjects,
 }) {
   const [form, setForm] = useState(empty);
   const [saving, setSaving] = useState(false);
@@ -44,6 +47,7 @@ export default function TaskModal({
             assignee_ids: task.assignee_ids ?? [],
             calendar_sync_enabled: task.calendar_sync_enabled,
             lead_id: task.lead_id || "",
+            project_id: task.project_id || "",
             due_at: localValue(task.due_at),
             scheduled_start: localValue(task.scheduled_start),
             scheduled_end: localValue(task.scheduled_end),
@@ -53,6 +57,7 @@ export default function TaskModal({
             title: initialValues?.title ?? "",
             category: initialValues?.category ?? "development",
             lead_id: initialLeadId,
+            project_id: initialValues?.project_id || "",
             assignee_ids: defaultOwnerId ? [defaultOwnerId] : [],
           },
     );
@@ -203,6 +208,32 @@ export default function TaskModal({
               {leads.map((lead) => (
                 <option key={lead.id} value={lead.id}>
                   {lead.business_name}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label className="text-sm font-bold">
+            <span className="flex items-center justify-between">
+              Project
+              {onManageProjects && (
+                <button
+                  type="button"
+                  onClick={onManageProjects}
+                  className="text-xs font-bold text-violet-600 hover:text-violet-800 transition"
+                >
+                  Manage projects
+                </button>
+              )}
+            </span>
+            <select
+              value={form.project_id}
+              onChange={(e) => set("project_id", e.target.value)}
+              className="control mt-2 w-full"
+            >
+              <option value="">No project</option>
+              {projects.map((project) => (
+                <option key={project.id} value={project.id}>
+                  {project.emoji ? `${project.emoji} ` : ""}{project.name}
                 </option>
               ))}
             </select>

@@ -3,6 +3,7 @@ import { NavLink, useLocation } from "react-router-dom";
 import {
   Bell,
   CheckCheck,
+  ClipboardList,
   Command,
   LayoutDashboard,
   LogOut,
@@ -28,6 +29,7 @@ const nav = [
   ["/", "Home", LayoutDashboard],
   ["/leads", "Pipeline", Users],
   ["/rewind", "Today", RotateCcw],
+  ["/tasks", "Tasks", ClipboardList],
   ["/notes", "Notes", NotebookPen],
   ["/jobs", "Find leads", Target],
   ["/settings", "Settings", Settings],

@@ -45,11 +45,24 @@ export const TASK_STATUSES = [
   "cancelled",
 ];
 
+export const PROJECT_COLORS = {
+  violet: { bg: "bg-violet-500", light: "bg-violet-100", text: "text-violet-700", border: "border-violet-200" },
+  sky:    { bg: "bg-sky-500",    light: "bg-sky-100",    text: "text-sky-700",    border: "border-sky-200"    },
+  emerald:{ bg: "bg-emerald-500",light: "bg-emerald-100",text: "text-emerald-700",border: "border-emerald-200"},
+  amber:  { bg: "bg-amber-500",  light: "bg-amber-100",  text: "text-amber-700",  border: "border-amber-200"  },
+  rose:   { bg: "bg-rose-500",   light: "bg-rose-100",   text: "text-rose-700",   border: "border-rose-200"   },
+  zinc:   { bg: "bg-zinc-500",   light: "bg-zinc-100",   text: "text-zinc-700",   border: "border-zinc-200"   },
+  indigo: { bg: "bg-indigo-500", light: "bg-indigo-100", text: "text-indigo-700", border: "border-indigo-200" },
+  orange: { bg: "bg-orange-500", light: "bg-orange-100", text: "text-orange-700", border: "border-orange-200" },
+};
+
 async function result(request) {
   const { data, error } = await request;
   if (error) throw error;
   return data;
 }
+
+// ─── Workspace Tasks ──────────────────────────────────────────────────────────
 
 export function useWorkspaceTasks() {
   const { activeWorkspaceId, user } = useAuthWorkspace();
@@ -64,7 +77,7 @@ export function useWorkspaceTasks() {
         result(
           supabase
             .from("tasks")
-            .select("*, leads(id,name)")
+            .select("*, task_projects(id,name,color,emoji)")
             .eq("workspace_id", activeWorkspaceId)
             .order("created_at", { ascending: false }),
         ),
@@ -151,6 +164,7 @@ export function useWorkspaceTasks() {
       priority: input.priority,
       status: input.scheduled_start ? "planned" : "unplanned",
       lead_id: input.lead_id || null,
+      project_id: input.project_id || null,
       due_at: input.due_at || null,
       scheduled_start: input.scheduled_start || null,
       scheduled_end: input.scheduled_end || null,
@@ -184,6 +198,7 @@ export function useWorkspaceTasks() {
       "priority",
       "status",
       "lead_id",
+      "project_id",
       "due_at",
       "scheduled_start",
       "scheduled_end",
@@ -253,6 +268,8 @@ export function useWorkspaceTasks() {
   };
 }
 
+// ─── Task Comments ────────────────────────────────────────────────────────────
+
 export function useTaskComments(taskId) {
   const { activeWorkspaceId } = useAuthWorkspace();
   const client = useQueryClient();
@@ -291,6 +308,8 @@ export function useTaskComments(taskId) {
   }, [client, taskId]);
   return query;
 }
+
+// ─── Notifications ────────────────────────────────────────────────────────────
 
 export function useNotifications() {
   const { activeWorkspaceId, user } = useAuthWorkspace();
@@ -375,6 +394,8 @@ export function useNotifications() {
   };
 }
 
+// ─── Calendar Events ──────────────────────────────────────────────────────────
+
 export function useCalendarEvents(from, to) {
   const { activeWorkspaceId } = useAuthWorkspace();
   return useQuery({
@@ -390,4 +411,172 @@ export function useCalendarEvents(from, to) {
       );
     },
   });
+}
+
+// ─── Task Projects ────────────────────────────────────────────────────────────
+
+export function useTaskProjects() {
+  const { activeWorkspaceId, user } = useAuthWorkspace();
+  const client = useQueryClient();
+  const key = ["task-projects", activeWorkspaceId];
+  const query = useQuery({
+    queryKey: key,
+    enabled: Boolean(activeWorkspaceId),
+    queryFn: () =>
+      result(
+        supabase
+          .from("task_projects")
+          .select("*")
+          .eq("workspace_id", activeWorkspaceId)
+          .order("position")
+          .order("created_at"),
+      ),
+  });
+
+  useEffect(() => {
+    if (!activeWorkspaceId) return undefined;
+    const channel = supabase
+      .channel(`task-projects:${activeWorkspaceId}:${crypto.randomUUID()}`)
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "task_projects", filter: `workspace_id=eq.${activeWorkspaceId}` },
+        () => client.invalidateQueries({ queryKey: key }),
+      )
+      .subscribe();
+    return () => { channel.unsubscribe(); void supabase.removeChannel(channel); };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeWorkspaceId, client]);
+
+  const createProject = async ({ name, color = "violet", emoji = "" }) => {
+    const data = await result(
+      supabase.from("task_projects").insert({
+        workspace_id: activeWorkspaceId,
+        created_by: user.id,
+        name: name.trim(),
+        color,
+        emoji: emoji || null,
+      }).select().single(),
+    );
+    await client.invalidateQueries({ queryKey: key });
+    return data;
+  };
+
+  const updateProject = async (id, changes) => {
+    await result(
+      supabase.from("task_projects").update(changes).eq("id", id).eq("workspace_id", activeWorkspaceId),
+    );
+    await client.invalidateQueries({ queryKey: key });
+  };
+
+  const deleteProject = async (id) => {
+    await result(
+      supabase.from("task_projects").delete().eq("id", id).eq("workspace_id", activeWorkspaceId),
+    );
+    await client.invalidateQueries({ queryKey: key });
+  };
+
+  return {
+    ...query,
+    projects: query.data ?? [],
+    createProject,
+    updateProject,
+    deleteProject,
+  };
+}
+
+// ─── Task Checklist Items ─────────────────────────────────────────────────────
+
+export function useTaskChecklistItems(taskId) {
+  const { activeWorkspaceId, user } = useAuthWorkspace();
+  const client = useQueryClient();
+  const key = ["task-checklist", taskId];
+
+  const query = useQuery({
+    queryKey: key,
+    enabled: Boolean(taskId && activeWorkspaceId),
+    queryFn: () =>
+      result(
+        supabase
+          .from("task_checklist_items")
+          .select("*")
+          .eq("task_id", taskId)
+          .eq("workspace_id", activeWorkspaceId)
+          .order("position")
+          .order("created_at"),
+      ),
+  });
+
+  useEffect(() => {
+    if (!taskId) return undefined;
+    const channel = supabase
+      .channel(`checklist:${taskId}:${crypto.randomUUID()}`)
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "task_checklist_items", filter: `task_id=eq.${taskId}` },
+        () => client.invalidateQueries({ queryKey: key }),
+      )
+      .subscribe();
+    return () => { channel.unsubscribe(); void supabase.removeChannel(channel); };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [taskId, client]);
+
+  const invalidate = () => client.invalidateQueries({ queryKey: key });
+
+  const addItem = async (body) => {
+    const maxPos = Math.max(0, ...(query.data ?? []).map((i) => i.position));
+    await result(
+      supabase.from("task_checklist_items").insert({
+        task_id: taskId,
+        workspace_id: activeWorkspaceId,
+        created_by: user.id,
+        body: body.trim(),
+        position: maxPos + 1,
+      }),
+    );
+    await invalidate();
+  };
+
+  const toggleItem = async (id, completed) => {
+    await result(
+      supabase
+        .from("task_checklist_items")
+        .update({ completed })
+        .eq("id", id)
+        .eq("task_id", taskId),
+    );
+    await invalidate();
+  };
+
+  const updateItem = async (id, body) => {
+    await result(
+      supabase
+        .from("task_checklist_items")
+        .update({ body: body.trim() })
+        .eq("id", id)
+        .eq("task_id", taskId),
+    );
+    await invalidate();
+  };
+
+  const deleteItem = async (id) => {
+    await result(
+      supabase.from("task_checklist_items").delete().eq("id", id).eq("task_id", taskId),
+    );
+    await invalidate();
+  };
+
+  const items = query.data ?? [];
+  const done = items.filter((i) => i.completed).length;
+
+  return {
+    ...query,
+    items,
+    done,
+    total: items.length,
+    progress: items.length ? Math.round((done / items.length) * 100) : 0,
+    addItem,
+    toggleItem,
+    updateItem,
+    deleteItem,
+  };
 }

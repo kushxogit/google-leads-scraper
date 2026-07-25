@@ -8,6 +8,7 @@ import {
   Circle,
   Download,
   ExternalLink,
+  FolderHeart,
   Globe2,
   Link2,
   Mail,
@@ -32,7 +33,7 @@ import {
 } from "../hooks/useCrm";
 import { useAuthWorkspace } from "../context/authWorkspace";
 import TaskModal from "../components/TaskModal";
-import { TASK_CATEGORIES, useWorkspaceTasks } from "../hooks/useTasks";
+import { TASK_CATEGORIES, useWorkspaceTasks, useTaskProjects } from "../hooks/useTasks";
 import { useFeedback } from "../context/feedback";
 
 export default function LeadDetail() {
@@ -42,11 +43,8 @@ export default function LeadDetail() {
   const { lead, notes, timeline, members } = useLeadDetail(id);
   const { updateLead, deleteLead } = useWorkspaceLeads();
   const taskApi = useWorkspaceTasks();
+  const projectApi = useTaskProjects();
   const tagApi = useWorkspaceLeadTags();
-  const { notify, confirm } = useFeedback();
-  const [note, setNote] = useState("");
-  const [attachments, setAttachments] = useState([]);
-  const [uploading, setUploading] = useState(false);
   const [taskOpen, setTaskOpen] = useState(false);
   const [taskEditing, setTaskEditing] = useState(null);
   const [showCompletedTasks, setShowCompletedTasks] = useState(false);
@@ -323,6 +321,29 @@ export default function LeadDetail() {
             >
               <CheckSquare2 size={15} /> Add Task
             </button>
+
+            {current.status === "won" && (
+              <button
+                onClick={async () => {
+                  if (await confirm({ title: "Convert to Project?", description: "This will create a new task project for this opportunity and move all its tasks.", confirmLabel: "Create project" })) {
+                    try {
+                      const project = await projectApi.createProject({ name: current.business_name || "New Project", emoji: "🏆", color: "emerald" });
+                      if (project) {
+                        const tasksToMove = taskApi.tasks.filter((t) => t.lead_id === id);
+                        await Promise.all(tasksToMove.map((t) => taskApi.updateTask(t.id, { project_id: project.id })));
+                      }
+                      notify("Converted to a task project!");
+                      navigate("/tasks");
+                    } catch (e) {
+                      notify(e.message, "error");
+                    }
+                  }
+                }}
+                className="inline-flex items-center gap-2 rounded-2xl bg-emerald-600 px-4 py-2.5 text-xs font-black text-white hover:bg-emerald-700 transition shadow-2xs"
+              >
+                <FolderHeart size={15} /> Convert to Project
+              </button>
+            )}
 
             <select
               value={current.status}

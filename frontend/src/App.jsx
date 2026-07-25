@@ -1,4 +1,4 @@
-﻿import React from "react";
+import React from "react";
 import { lazy, Suspense } from "react";
 import {
   BrowserRouter as Router,
@@ -25,6 +25,7 @@ const CalendarCallback = lazy(() => import("./pages/CalendarCallback"));
 const InviteAccept = lazy(() => import("./pages/InviteAccept"));
 const Settings = lazy(() => import("./pages/Settings"));
 const ResetPassword = lazy(() => import("./pages/ResetPassword"));
+const TaskBoard = lazy(() => import("./pages/TaskBoard"));
 
 function App() {
   if (supabaseConfigError) {
@@ -69,6 +70,7 @@ function App() {
                       element={<Navigate to="/leads" replace />}
                     />
                     <Route path="/rewind" element={<Rewind />} />
+                    <Route path="/tasks" element={<TaskBoard />} />
                     <Route path="/notes" element={<Notes />} />
                     <Route
                       path="/calendar/callback"
