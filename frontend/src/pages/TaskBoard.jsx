@@ -1,6 +1,23 @@
 import { useMemo, useState, useCallback, useRef } from "react";
 import { isToday, isBefore, isAfter, addDays, startOfDay, format } from "date-fns";
-import { DragDropContext, Droppable, Draggable } from "@hello-pangea/dnd";
+import {
+  DndContext,
+  DragOverlay,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  closestCenter,
+  useDroppable,
+  MeasuringStrategy,
+  useDndContext,
+} from "@dnd-kit/core";
+import {
+  SortableContext,
+  useSortable,
+  verticalListSortingStrategy,
+  arrayMove,
+} from "@dnd-kit/sortable";
+import { CSS } from "@dnd-kit/utilities";
 import {
   CheckCircle2,
   CheckSquare,
@@ -68,13 +85,22 @@ export default function TaskBoard() {
   const [filterLead, setFilterLead] = useState("all");
   const [filterAssignee, setFilterAssignee] = useState("all");
   const [projectManagerOpen, setProjectManagerOpen] = useState(false);
+  const [activeDragId, setActiveDragId] = useState(null);
 
+  // Local order override for optimistic Kanban DnD
+  const [localOrder, setLocalOrder] = useState(null);
   const [localTaskStatus, setLocalTaskStatus] = useState({});
+
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
+  );
 
   // ── Derived data ──────────────────────────────────────────────────────────
 
   const allTasks = useMemo(() => {
-    const tasks = taskApi.tasks;
+    const tasks = localOrder
+      ? localOrder.map((id) => taskApi.tasks.find((t) => t.id === id)).filter(Boolean)
+      : taskApi.tasks;
 
     const mappedTasks = tasks.map(t => localTaskStatus[t.id] ? { ...t, status: localTaskStatus[t.id] } : t);
 
@@ -93,7 +119,7 @@ export default function TaskBoard() {
       
       return true;
     });
-  }, [taskApi.tasks, localTaskStatus, search, filterProject, filterLead, filterAssignee, tab, user?.id]);
+  }, [taskApi.tasks, localOrder, localTaskStatus, search, filterProject, filterLead, filterAssignee, tab, user?.id]);
 
   const tasksByStatus = useMemo(() => {
     const map = {};
@@ -111,6 +137,7 @@ export default function TaskBoard() {
 
   const handleCreate = async (form) => {
     await taskApi.createTask({ ...form, status: modalDefaultStatus });
+    setLocalOrder(null);
   };
 
   const handleUpdate = useCallback(async (id, changes) => {
@@ -118,6 +145,7 @@ export default function TaskBoard() {
     if (selectedTask?.id === id) {
       setSelectedTask((prev) => prev ? { ...prev, ...changes } : null);
     }
+    setLocalOrder(null);
   }, [taskApi, selectedTask?.id]);
 
   // Attach addComment to handleUpdate so TaskDetailPanel can access it
@@ -126,27 +154,131 @@ export default function TaskBoard() {
   const handleDelete = useCallback(async (id) => {
     await taskApi.deleteTask(id);
     setSelectedTask(null);
+    setLocalOrder(null);
   }, [taskApi]);
 
   // ── Drag & Drop ───────────────────────────────────────────────────────────
 
-  const handleDragEnd = async (result) => {
-    const { source, destination, draggableId } = result;
-    if (!destination) return;
-    if (source.droppableId === destination.droppableId) return;
+  const handleDragStart = ({ active }) => {
+    setActiveDragId(active.id);
+  };
 
-    const newStatus = destination.droppableId;
-    const taskId = draggableId;
+  const handleDragOver = ({ active, over }) => {
+    if (!over) return;
+    const overData = over.data.current ?? {};
+    
+    let newStatus = null;
+    if (overData.type === "column") {
+      newStatus = over.id;
+    } else if (overData.type === "task") {
+      const overTask = allTasks.find(t => t.id === over.id);
+      if (overTask) newStatus = overTask.status;
+    }
+    
+    if (newStatus) {
+      setLocalTaskStatus((prev) => {
+        if (prev[active.id] === newStatus) return prev;
+        return { ...prev, [active.id]: newStatus };
+      });
+    }
+  };
 
-    setLocalTaskStatus((prev) => ({ ...prev, [taskId]: newStatus }));
-    taskApi.updateTask(taskId, { status: newStatus }).finally(() => {
+  const handleDragEnd = async ({ active, over }) => {
+    setActiveDragId(null);
+    
+    if (!over || active.id === over.id) {
       setLocalTaskStatus((prev) => {
         const next = { ...prev };
-        delete next[taskId];
+        delete next[active.id];
         return next;
       });
-    });
+      return;
+    }
+
+    const activeData = active.data.current ?? {};
+    const overData = over.data.current ?? {};
+
+    if (activeData.type === "task" && overData.type === "column") {
+      const activeTask = allTasks.find((t) => t.id === active.id);
+      if (activeTask && activeTask.status !== overData.id) {
+        setLocalTaskStatus((prev) => ({ ...prev, [active.id]: overData.id }));
+        taskApi.updateTask(active.id, { status: overData.id }).finally(() => {
+          setLocalTaskStatus((prev) => {
+            const next = { ...prev };
+            delete next[active.id];
+            return next;
+          });
+        });
+      } else {
+        setLocalTaskStatus((prev) => {
+          const next = { ...prev };
+          delete next[active.id];
+          return next;
+        });
+      }
+      return;
+    }
+
+    if (activeData.type === "task" && overData.type === "lead-column") {
+      const activeTask = allTasks.find((t) => t.id === active.id);
+      if (activeTask) {
+        const targetLeadId = overData.id === "unlinked" ? null : overData.id;
+        if (activeTask.lead_id !== targetLeadId) {
+          taskApi.updateTask(active.id, { lead_id: targetLeadId });
+        }
+      }
+      setLocalTaskStatus((prev) => {
+        const next = { ...prev };
+        delete next[active.id];
+        return next;
+      });
+      return;
+    }
+
+    const overTask = allTasks.find((t) => t.id === over.id);
+    if (!overTask) {
+      setLocalTaskStatus((prev) => {
+        const next = { ...prev };
+        delete next[active.id];
+        return next;
+      });
+      return;
+    }
+    const activeTask = allTasks.find((t) => t.id === active.id);
+    
+    // Optimistically reorder
+    const allIds = allTasks.map((t) => t.id);
+    const oldIdx = allIds.indexOf(active.id);
+    const newIdx = allIds.indexOf(over.id);
+    setLocalOrder(arrayMove(allIds, oldIdx, newIdx));
+
+    // Update status if moved to a different column
+    if (overTask.status !== activeTask.status) {
+      setLocalTaskStatus((prev) => ({ ...prev, [active.id]: overTask.status }));
+      taskApi.updateTask(active.id, { status: overTask.status }).finally(() => {
+        setLocalOrder(null);
+        setLocalTaskStatus((prev) => {
+          const next = { ...prev };
+          delete next[active.id];
+          return next;
+        });
+      });
+    } else {
+      setLocalTaskStatus((prev) => {
+        const next = { ...prev };
+        delete next[active.id];
+        return next;
+      });
+    }
   };
+
+  const handleDragCancel = () => {
+    setActiveDragId(null);
+    setLocalOrder(null);
+    setLocalTaskStatus({});
+  };
+
+  const activeDragTask = activeDragId ? taskApi.tasks.find((t) => t.id === activeDragId) : null;
 
   // ── Loading ───────────────────────────────────────────────────────────────
 
@@ -278,7 +410,15 @@ export default function TaskBoard() {
 
       {/* Main Content */}
       <div className="flex-1 overflow-hidden">
-        <DragDropContext onDragEnd={handleDragEnd}>
+        <DndContext
+          sensors={sensors}
+          collisionDetection={closestCenter}
+          measuring={{ droppable: { strategy: MeasuringStrategy.Always } }}
+          onDragStart={handleDragStart}
+          onDragOver={handleDragOver}
+          onDragEnd={handleDragEnd}
+          onDragCancel={handleDragCancel}
+        >
           {viewMode === "kanban" ? (
             <KanbanBoard
               columns={KANBAN_COLUMNS}
@@ -302,7 +442,19 @@ export default function TaskBoard() {
               onAddTask={openCreate}
             />
           )}
-        </DragDropContext>
+
+          <DragOverlay dropAnimation={{ duration: 200, easing: "ease" }}>
+            {activeDragTask && (
+              <TaskCard
+                task={activeDragTask}
+                members={taskApi.members}
+                projects={projectApi.projects}
+                leads={leads ?? []}
+                isDragging
+              />
+            )}
+          </DragOverlay>
+        </DndContext>
       </div>
 
       {/* Task Detail Panel */}
@@ -376,98 +528,107 @@ function KanbanBoard({ columns, tasksByStatus, members, projects, leads, onSelec
 }
 
 function KanbanColumn({ col, tasks, members, projects, leads, onSelectTask, onUpdateTask, onAddTask }) {
+  const { setNodeRef, isOver } = useDroppable({
+    id: col.id,
+    data: { type: "column" },
+  });
+
+  const { over } = useDndContext();
+  const isOverChild = over?.data?.current?.type === "task" && tasks.some(t => t.id === over.id);
+  const shouldHighlight = isOver || isOverChild;
+  
+  const taskIds = useMemo(() => tasks.map(t => t.id), [tasks]);
+
   return (
-    <Droppable
-      droppableId={col.id}
-      renderClone={(provided, snapshot, rubric) => (
-        <div
-          ref={provided.innerRef}
-          {...provided.draggableProps}
-          {...provided.dragHandleProps}
-          style={provided.draggableProps.style}
-        >
-          <TaskCard
-            task={tasks[rubric.source.index]}
-            members={members}
-            projects={projects}
-            leads={leads}
-            onClick={() => {}}
-            onUpdateTask={() => {}}
-            isDragging={snapshot.isDragging}
-          />
-        </div>
-      )}
+    <div
+      ref={setNodeRef}
+      className="flex w-[280px] shrink-0 flex-col"
     >
-      {(provided, snapshot) => (
-        <div
-          ref={provided.innerRef}
-          {...provided.droppableProps}
-          className="flex w-[280px] shrink-0 flex-col"
-        >
-          <div className={`flex flex-col h-full rounded-[22px] border border-white/70 bg-white/50 backdrop-blur-sm transition-all duration-200 ${snapshot.isDraggingOver ? "ring-2 ring-violet-400 ring-offset-1 bg-white/70" : ""}`}>
-            {/* Column header */}
-            <div className={`flex items-center justify-between border-t-4 ${col.color} rounded-t-[22px] px-3 py-3`}>
-              <div className="flex items-center gap-2">
-                <span className={`h-2.5 w-2.5 rounded-full ${col.dot}`} />
-                <span className="text-xs font-extrabold text-zinc-700">{col.label}</span>
-                <span className={`rounded-full px-1.5 py-0.5 text-[10px] font-extrabold ${col.countBg}`}>
-                  {tasks.length}
-                </span>
-              </div>
-              <button
-                onClick={onAddTask}
-                className="grid h-6 w-6 place-items-center rounded-lg text-zinc-400 hover:bg-zinc-100 hover:text-zinc-700 transition"
-              >
-                <Plus size={13} />
-              </button>
-            </div>
-
-            {/* Cards */}
-            <div className="flex-1 overflow-y-auto px-2 py-2 space-y-2">
-              {tasks.map((task, index) => (
-                <Draggable key={task.id} draggableId={task.id} index={index}>
-                  {(provided, snapshot) => (
-                    <div
-                      ref={provided.innerRef}
-                      {...provided.draggableProps}
-                      {...provided.dragHandleProps}
-                      style={provided.draggableProps.style}
-                    >
-                      <TaskCard
-                        task={task}
-                        members={members}
-                        projects={projects}
-                        leads={leads}
-                        onClick={() => onSelectTask(task)}
-                        onUpdateTask={onUpdateTask}
-                        isDragging={snapshot.isDragging}
-                      />
-                    </div>
-                  )}
-                </Draggable>
-              ))}
-              {provided.placeholder}
-              {tasks.length === 0 && !snapshot.isDraggingOver && (
-                <div className="flex flex-col items-center justify-center py-8 text-center">
-                  <Inbox size={20} className="mb-2 text-zinc-300" />
-                  <p className="text-xs text-zinc-400">No tasks here</p>
-                </div>
-              )}
-            </div>
-
-            {/* Add task footer */}
-            <div className="px-2 pb-2">
-              <button
-                onClick={onAddTask}
-                className="flex w-full items-center gap-2 rounded-xl px-3 py-2 text-xs font-semibold text-zinc-400 hover:bg-zinc-100 hover:text-zinc-700 transition"
-              >
-                <Plus size={13} /> Add task
-              </button>
-            </div>
+      <div className={`flex flex-col h-full rounded-[22px] border border-white/70 bg-white/50 backdrop-blur-sm transition-all duration-200 ${shouldHighlight ? "ring-2 ring-violet-400 ring-offset-1 bg-white/70" : ""}`}>
+        {/* Column header */}
+        <div className={`flex items-center justify-between border-t-4 ${col.color} rounded-t-[22px] px-3 py-3`}>
+          <div className="flex items-center gap-2">
+            <span className={`h-2.5 w-2.5 rounded-full ${col.dot}`} />
+            <span className="text-xs font-extrabold text-zinc-700">{col.label}</span>
+            <span className={`rounded-full px-1.5 py-0.5 text-[10px] font-extrabold ${col.countBg}`}>
+              {tasks.length}
+            </span>
           </div>
+          <button
+            onClick={onAddTask}
+            className="grid h-6 w-6 place-items-center rounded-lg text-zinc-400 hover:bg-zinc-100 hover:text-zinc-700 transition"
+          >
+            <Plus size={13} />
+          </button>
         </div>
-      )}
-    </Droppable>
+
+      {/* Cards */}
+      <div className="flex-1 overflow-y-auto px-2 py-2 space-y-2">
+        <SortableContext items={taskIds} strategy={verticalListSortingStrategy}>
+          {tasks.map((task) => (
+              <SortableTaskCard
+              key={task.id}
+              task={task}
+              members={members}
+              projects={projects}
+              leads={leads}
+              onClick={() => onSelectTask(task)}
+              onUpdateTask={onUpdateTask}
+            />
+          ))}
+        </SortableContext>
+        {tasks.length === 0 && (
+          <div className="flex flex-col items-center justify-center py-8 text-center">
+            <Inbox size={20} className="mb-2 text-zinc-300" />
+            <p className="text-xs text-zinc-400">No tasks here</p>
+          </div>
+        )}
+      </div>
+
+      {/* Add task footer */}
+      <div className="px-2 pb-2">
+        <button
+          onClick={onAddTask}
+          className="flex w-full items-center gap-2 rounded-xl px-3 py-2 text-xs font-semibold text-zinc-400 hover:bg-zinc-100 hover:text-zinc-700 transition"
+        >
+          <Plus size={13} /> Add task
+        </button>
+      </div>
+      </div>
+    </div>
+  );
+}
+
+// ─── Sortable Task Card wrapper ───────────────────────────────────────────────
+
+function SortableTaskCard({ task, members, projects, leads, onClick, onUpdateTask }) {
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({ id: task.id, data: { type: "task" } });
+
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    opacity: isDragging ? 0.35 : 1,
+  };
+
+  return (
+    <div ref={setNodeRef} style={style} {...attributes} {...listeners}>
+      <TaskCard
+        task={task}
+        members={members}
+        projects={projects}
+        leads={leads}
+        onClick={onClick}
+        onUpdateTask={onUpdateTask}
+        isDragging={isDragging}
+      />
+    </div>
   );
 }
 
