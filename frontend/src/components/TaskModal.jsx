@@ -66,6 +66,7 @@ export default function TaskModal({
     defaultOwnerId,
     initialLeadId,
     initialValues?.category,
+    initialValues?.project_id,
     initialValues?.title,
     open,
     task,

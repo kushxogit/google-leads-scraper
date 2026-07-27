@@ -1,4 +1,4 @@
-import { useMemo, useState, useCallback, useRef } from "react";
+import { useEffect, useMemo, useState, useCallback, useRef } from "react";
 import { isToday, isBefore, isAfter, addDays, startOfDay, format } from "date-fns";
 import {
   DndContext,
@@ -20,6 +20,7 @@ import {
 import { CSS } from "@dnd-kit/utilities";
 import {
   CheckCircle2,
+  Check,
   CheckSquare,
   ChevronDown,
   ChevronLeft,
@@ -36,6 +37,8 @@ import {
   Plus,
   Search,
   Settings2,
+  SlidersHorizontal,
+  Sparkles,
   Target,
   User,
   Users,
@@ -48,6 +51,8 @@ import { useAuthWorkspace } from "../context/authWorkspace";
 import { useFeedback } from "../context/feedback";
 import TaskModal from "../components/TaskModal";
 import TaskDetailPanel from "../components/TaskDetailPanel";
+import AiTaskModal from "../components/AiTaskModal";
+import AiNextActions from "../components/AiNextActions";
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
@@ -79,17 +84,49 @@ export default function TaskBoard() {
   const [viewMode, setViewMode] = useState("kanban"); // "kanban" | "list"
   const [selectedTask, setSelectedTask] = useState(null);
   const [modalOpen, setModalOpen] = useState(false);
+  const [aiModalOpen, setAiModalOpen] = useState(false);
+  const [nextActionsOpen, setNextActionsOpen] = useState(false);
   const [modalDefaultStatus, setModalDefaultStatus] = useState("unplanned");
   const [search, setSearch] = useState("");
   const [filterProject, setFilterProject] = useState("all");
   const [filterLead, setFilterLead] = useState("all");
   const [filterAssignee, setFilterAssignee] = useState("all");
+  const [filtersOpen, setFiltersOpen] = useState(false);
+  const [lastProjectId, setLastProjectId] = useState("");
   const [projectManagerOpen, setProjectManagerOpen] = useState(false);
   const [activeDragId, setActiveDragId] = useState(null);
+  const hasDefaultedProject = useRef(false);
 
   // Local order override for optimistic Kanban DnD
   const [localOrder, setLocalOrder] = useState(null);
   const [localTaskStatus, setLocalTaskStatus] = useState({});
+
+  // Make the board project-first once project data is available, without
+  // preventing an intentional later switch to the cross-project view.
+  useEffect(() => {
+    if (!hasDefaultedProject.current && projectApi.projects.length) {
+      hasDefaultedProject.current = true;
+      setLastProjectId(projectApi.projects[0].id);
+      setFilterProject(projectApi.projects[0].id);
+    }
+  }, [projectApi.projects]);
+
+  const handleProjectChange = (projectId) => {
+    if (projectId !== "all") setLastProjectId(projectId);
+    setFilterProject(projectId);
+    setTab("all");
+  };
+
+  const showProjectTasks = () => {
+    const projectId = lastProjectId || projectApi.projects[0]?.id;
+    if (projectId) handleProjectChange(projectId);
+  };
+
+  const showAllTasks = () => {
+    setFilterProject("all");
+    setFilterLead("all");
+    setTab("all");
+  };
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
@@ -128,6 +165,12 @@ export default function TaskBoard() {
     return map;
   }, [allTasks]);
 
+  const selectedProject = projectApi.projects.find((project) => project.id === filterProject);
+  const selectedProjectTaskCount = selectedProject
+    ? taskApi.tasks.filter((task) => task.project_id === selectedProject.id && task.status !== "cancelled").length
+    : null;
+  const hasActiveFilters = filterLead !== "all" || filterAssignee !== "all";
+
   // ── Actions ───────────────────────────────────────────────────────────────
 
   const openCreate = (status = "unplanned") => {
@@ -137,6 +180,15 @@ export default function TaskBoard() {
 
   const handleCreate = async (form) => {
     await taskApi.createTask({ ...form, status: modalDefaultStatus });
+    setLocalOrder(null);
+  };
+
+  const handleAiCreate = async (draft) => {
+    await taskApi.createTask({
+      ...draft,
+      project_id: draft.project_id || selectedProject?.id || "",
+      assignee_ids: draft.assignee_ids?.length ? draft.assignee_ids : [user?.id].filter(Boolean),
+    });
     setLocalOrder(null);
   };
 
@@ -292,49 +344,74 @@ export default function TaskBoard() {
 
   return (
     <div className="flex h-full flex-col">
-      {/* Page header */}
-      <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <div>
-          <p className="eyebrow">Workspace</p>
-          <h1 className="mt-0.5 text-2xl font-extrabold tracking-[-.04em]">
-            Tasks
-          </h1>
+      {/* Project-first header */}
+      <div className="mb-4 flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+        <div className="min-w-0 sm:w-[360px]">
+          <p className="eyebrow">Projects</p>
+          <ProjectPicker
+            projects={projectApi.projects}
+            value={filterProject}
+            onChange={handleProjectChange}
+            onManage={() => setProjectManagerOpen(true)}
+          />
+          <p className="mt-2 text-xs font-medium text-zinc-500">
+            {selectedProject
+              ? `${selectedProjectTaskCount} task${selectedProjectTaskCount === 1 ? "" : "s"} in this project.`
+              : "Choose a project to focus the board, or view work across all projects."}
+          </p>
         </div>
         <div className="flex items-center gap-2">
           <button
-            onClick={() => setProjectManagerOpen(true)}
-            className="button-secondary gap-1.5 py-2 text-xs"
+            onClick={() => setNextActionsOpen(true)}
+            className="button-secondary h-10 gap-1.5 px-4 text-sm"
           >
-            <Settings2 size={13} /> Projects
+            <Zap size={14} /> Next actions
+          </button>
+          <button
+            onClick={() => selectedProject ? setAiModalOpen(true) : notify("Choose a project before planning a task with AI.", "error")}
+            className="button-secondary h-10 gap-1.5 px-4 text-sm"
+          >
+            <Sparkles size={14} /> Plan with AI
           </button>
           <button
             onClick={() => openCreate()}
-            className="button-primary gap-1.5 py-2 text-xs"
+            className="button-primary h-10 gap-1.5 px-4 text-sm"
           >
             <Plus size={14} /> New Task
           </button>
         </div>
       </div>
 
-      {/* Tabs */}
-      <div className="mb-4 flex items-center justify-between gap-4 border-b border-zinc-200/80 pb-3">
-        <div className="flex gap-1">
+      {/* Task controls */}
+      <div className="mb-4 flex flex-wrap items-center gap-2 border-b border-zinc-200/80 pb-3">
+        <div className="flex rounded-xl bg-zinc-100 p-1">
+          <button
+            onClick={showProjectTasks}
+            className={`flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-bold transition ${filterProject !== "all" && tab === "all" ? "bg-white text-zinc-900 shadow-sm" : "text-zinc-500 hover:text-zinc-700"}`}
+          >
+            <FolderHeart size={12} /> Project
+          </button>
+          <button
+            onClick={showAllTasks}
+            className={`flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-bold transition ${filterProject === "all" && tab === "all" ? "bg-white text-zinc-900 shadow-sm" : "text-zinc-500 hover:text-zinc-700"}`}
+          >
+            <ClipboardList size={12} /> All tasks
+          </button>
           {[
-            { id: "all", label: "All Tasks", Icon: ClipboardList },
-            { id: "mine",  label: "My Tasks", Icon: User },
-            { id: "shared", label: "Shared Tasks", Icon: Users },
+            { id: "mine", label: "Mine", Icon: User },
+            { id: "shared", label: "Shared", Icon: Users },
           ].map(({ id, label, Icon }) => (
             <button
               key={id}
               onClick={() => setTab(id)}
-              className={`flex items-center gap-1.5 rounded-xl px-3 py-1.5 text-xs font-bold transition ${tab === id ? "bg-zinc-950 text-white" : "text-zinc-500 hover:bg-zinc-100"}`}
+              className={`flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-bold transition ${tab === id ? "bg-white text-zinc-900 shadow-sm" : "text-zinc-500 hover:text-zinc-700"}`}
             >
               <Icon size={12} /> {label}
             </button>
           ))}
         </div>
 
-        <div className="flex items-center gap-2">
+        <div className="flex flex-1 flex-wrap items-center gap-2 sm:justify-end">
           {/* Search */}
           <div className="relative hidden sm:block">
             <Search size={13} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-zinc-400" />
@@ -351,42 +428,36 @@ export default function TaskBoard() {
             )}
           </div>
 
-          {/* Project filter */}
-          <select
-            value={filterProject}
-            onChange={(e) => setFilterProject(e.target.value)}
-            className="h-8 rounded-xl border border-zinc-200 bg-white px-2.5 text-xs font-semibold text-zinc-600 outline-none focus:border-violet-400"
-          >
-            <option value="all">All Projects</option>
-            {projectApi.projects.map((p) => (
-              <option key={p.id} value={p.id}>{p.emoji ? `${p.emoji} ` : ""}{p.name}</option>
-            ))}
-          </select>
-
-          {/* Lead filter */}
-          <select
-            value={filterLead}
-            onChange={(e) => setFilterLead(e.target.value)}
-            className="h-8 w-36 rounded-xl border border-zinc-200 bg-white px-2.5 text-xs font-semibold text-zinc-600 outline-none focus:border-violet-400"
-          >
-            <option value="all">All Opps</option>
-            <option value="none">No Opp</option>
-            {leads?.map((l) => (
-              <option key={l.id} value={l.id}>{l.business_name || l.name}</option>
-            ))}
-          </select>
-
-          {/* Assignee filter */}
-          <select
-            value={filterAssignee}
-            onChange={(e) => setFilterAssignee(e.target.value)}
-            className="h-8 rounded-xl border border-zinc-200 bg-white px-2.5 text-xs font-semibold text-zinc-600 outline-none focus:border-violet-400"
-          >
-              <option value="all">All Members</option>
-              {taskApi.members.map((m) => (
-                <option key={m.id} value={m.id}>{m.full_name || m.email}</option>
-              ))}
-            </select>
+          <div className="relative">
+            <button
+              onClick={() => setFiltersOpen((open) => !open)}
+              aria-expanded={filtersOpen}
+              className={`flex h-8 items-center gap-1.5 rounded-xl border px-2.5 text-xs font-bold transition ${hasActiveFilters ? "border-violet-200 bg-violet-50 text-violet-700" : "border-zinc-200 bg-white text-zinc-600 hover:border-zinc-300"}`}
+            >
+              <SlidersHorizontal size={13} /> {filterLead === "all" ? "All opportunities" : "Opportunity"}
+              {hasActiveFilters && <span className="grid h-4 min-w-4 place-items-center rounded-full bg-violet-600 px-1 text-[9px] text-white">{Number(filterLead !== "all") + Number(filterAssignee !== "all")}</span>}
+            </button>
+            {filtersOpen && (
+              <div className="absolute right-0 z-30 mt-2 w-64 rounded-xl border border-zinc-200 bg-white p-3 shadow-xl shadow-zinc-900/10">
+                <div className="space-y-3">
+                  <label className="block text-[10px] font-extrabold uppercase tracking-wider text-zinc-400">Opportunity
+                    <select value={filterLead} onChange={(e) => setFilterLead(e.target.value)} className="control mt-1.5 w-full text-xs font-semibold text-zinc-700">
+                      <option value="all">All opportunities</option>
+                      <option value="none">No opportunity</option>
+                      {leads?.map((lead) => <option key={lead.id} value={lead.id}>{lead.business_name || lead.name}</option>)}
+                    </select>
+                  </label>
+                  <label className="block text-[10px] font-extrabold uppercase tracking-wider text-zinc-400">Assignee
+                    <select value={filterAssignee} onChange={(e) => setFilterAssignee(e.target.value)} className="control mt-1.5 w-full text-xs font-semibold text-zinc-700">
+                      <option value="all">All members</option>
+                      {taskApi.members.map((member) => <option key={member.id} value={member.id}>{member.full_name || member.email}</option>)}
+                    </select>
+                  </label>
+                </div>
+                {hasActiveFilters && <button onClick={() => { setFilterLead("all"); setFilterAssignee("all"); }} className="mt-3 text-xs font-bold text-violet-600 hover:text-violet-800">Clear filters</button>}
+              </div>
+            )}
+          </div>
 
           {/* View toggle */}
           <div className="flex rounded-xl border border-zinc-200 bg-white p-0.5">
@@ -419,7 +490,9 @@ export default function TaskBoard() {
           onDragEnd={handleDragEnd}
           onDragCancel={handleDragCancel}
         >
-          {viewMode === "kanban" ? (
+          {allTasks.length === 0 ? (
+            <ProjectEmptyState project={selectedProject} onAddTask={openCreate} />
+          ) : viewMode === "kanban" ? (
             <KanbanBoard
               columns={KANBAN_COLUMNS}
               tasksByStatus={tasksByStatus}
@@ -487,6 +560,23 @@ export default function TaskBoard() {
         initialValues={{ status: modalDefaultStatus, project_id: filterProject !== "all" ? filterProject : "" }}
       />
 
+      <AiTaskModal
+        open={aiModalOpen}
+        onClose={() => setAiModalOpen(false)}
+        project={selectedProject}
+        tasks={taskApi.tasks}
+        leads={leads ?? []}
+        onCreate={handleAiCreate}
+      />
+
+      <AiNextActions
+        open={nextActionsOpen}
+        onClose={() => setNextActionsOpen(false)}
+        project={selectedProject}
+        tasks={allTasks}
+        leads={leads ?? []}
+      />
+
       {/* Project Manager */}
       {projectManagerOpen && (
         <ProjectManagerModal
@@ -501,6 +591,115 @@ export default function TaskBoard() {
           onClose={() => setProjectManagerOpen(false)}
         />
       )}
+    </div>
+  );
+}
+
+function ProjectPicker({ projects, value, onChange, onManage }) {
+  const [open, setOpen] = useState(false);
+  const pickerRef = useRef(null);
+  const selectedProject = projects.find((project) => project.id === value);
+
+  useEffect(() => {
+    const closeOnOutsideClick = (event) => {
+      if (!pickerRef.current?.contains(event.target)) setOpen(false);
+    };
+    const closeOnEscape = (event) => {
+      if (event.key === "Escape") setOpen(false);
+    };
+    document.addEventListener("mousedown", closeOnOutsideClick);
+    document.addEventListener("keydown", closeOnEscape);
+    return () => {
+      document.removeEventListener("mousedown", closeOnOutsideClick);
+      document.removeEventListener("keydown", closeOnEscape);
+    };
+  }, []);
+
+  const selectProject = (projectId) => {
+    onChange(projectId);
+    setOpen(false);
+  };
+
+  return (
+    <div ref={pickerRef} className="relative mt-2">
+      <button
+        type="button"
+        onClick={() => setOpen((isOpen) => !isOpen)}
+        aria-expanded={open}
+        aria-haspopup="listbox"
+        className="flex h-12 w-full items-center gap-3 rounded-xl border border-zinc-200 bg-white px-3.5 text-left shadow-sm transition hover:border-violet-300 hover:shadow focus:outline-none focus:ring-4 focus:ring-violet-100"
+      >
+        <span className="grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-violet-100 text-violet-700">
+          <FolderHeart size={16} />
+        </span>
+        <span className="min-w-0 flex-1 truncate text-sm font-extrabold text-zinc-900">
+          {selectedProject?.name || "All projects"}
+        </span>
+        <ChevronDown size={16} className={`shrink-0 text-zinc-400 transition-transform ${open ? "rotate-180" : ""}`} />
+      </button>
+
+      {open && (
+        <div role="listbox" aria-label="Projects" className="absolute left-0 z-30 mt-2 w-full overflow-hidden rounded-xl border border-zinc-200 bg-white p-1 shadow-xl shadow-zinc-900/10">
+          {projects.map((project) => {
+            const selected = project.id === value;
+            return (
+              <button
+                key={project.id}
+                type="button"
+                role="option"
+                aria-selected={selected}
+                onClick={() => selectProject(project.id)}
+                className={`flex w-full items-center gap-2.5 rounded-lg px-3 py-2.5 text-left text-sm font-bold transition ${selected ? "bg-violet-50 text-violet-800" : "text-zinc-700 hover:bg-zinc-50"}`}
+              >
+                <span className="min-w-0 flex-1 truncate">{project.name}</span>
+                {selected && <Check size={15} className="shrink-0 text-violet-600" />}
+              </button>
+            );
+          })}
+          <div className="mt-1 border-t border-zinc-100 pt-1">
+            <button
+              type="button"
+              role="option"
+              aria-selected={value === "all"}
+              onClick={() => selectProject("all")}
+              className={`flex w-full items-center gap-2.5 rounded-lg px-3 py-2.5 text-left text-sm font-bold transition ${value === "all" ? "bg-violet-50 text-violet-800" : "text-zinc-500 hover:bg-zinc-50"}`}
+            >
+              <span className="flex-1">All projects</span>
+              {value === "all" && <Check size={15} className="shrink-0 text-violet-600" />}
+            </button>
+          </div>
+          <div className="mt-1 border-t border-zinc-100 pt-1">
+            <button
+              type="button"
+              onClick={() => { setOpen(false); onManage?.(); }}
+              className="flex w-full items-center gap-2 rounded-lg px-3 py-2.5 text-left text-xs font-bold text-zinc-500 transition hover:bg-zinc-50 hover:text-zinc-800"
+            >
+              <Settings2 size={14} /> Manage projects
+            </button>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function ProjectEmptyState({ project, onAddTask }) {
+  return (
+    <div className="grid h-full min-h-[360px] place-items-center rounded-2xl border border-dashed border-zinc-200 bg-white/45 p-6 text-center">
+      <div>
+        <span className="mx-auto grid h-11 w-11 place-items-center rounded-xl bg-violet-100 text-violet-700">
+          <FolderHeart size={19} />
+        </span>
+        <h2 className="mt-4 text-base font-extrabold text-zinc-900">
+          {project ? `No tasks in ${project.name}` : "No tasks to show"}
+        </h2>
+        <p className="mx-auto mt-1.5 max-w-xs text-sm leading-5 text-zinc-500">
+          {project ? "Add the first next step to give this project momentum." : "Try changing the task view or filters to see more work."}
+        </p>
+        <button onClick={() => onAddTask()} className="button-primary mt-5 gap-1.5 px-4 py-2.5 text-sm">
+          <Plus size={14} /> {project ? "Add first task" : "Create task"}
+        </button>
+      </div>
     </div>
   );
 }
