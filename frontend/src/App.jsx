@@ -26,6 +26,7 @@ const InviteAccept = lazy(() => import("./pages/InviteAccept"));
 const Settings = lazy(() => import("./pages/Settings"));
 const ResetPassword = lazy(() => import("./pages/ResetPassword"));
 const TaskBoard = lazy(() => import("./pages/TaskBoard"));
+const ProjectChat = lazy(() => import("./pages/ProjectChat"));
 
 function App() {
   if (supabaseConfigError) {
@@ -72,6 +73,7 @@ function App() {
                     <Route path="/rewind" element={<Rewind />} />
                     <Route path="/tasks" element={<TaskBoard />} />
                     <Route path="/notes" element={<Notes />} />
+                    <Route path="/project-chat" element={<ProjectChat />} />
                     <Route
                       path="/calendar/callback"
                       element={<CalendarCallback />}

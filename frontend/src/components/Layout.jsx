@@ -17,6 +17,7 @@ import {
   X,
   Settings,
   NotebookPen,
+  MessageSquare,
   PanelLeftClose,
   PanelLeftOpen,
 } from "lucide-react";
@@ -31,6 +32,7 @@ const nav = [
   ["/rewind", "Today", RotateCcw],
   ["/tasks", "Tasks", ClipboardList],
   ["/notes", "Notes", NotebookPen],
+  ["/project-chat", "Project chat", MessageSquare],
   ["/jobs", "Find leads", Target],
   ["/settings", "Settings", Settings],
 ];
