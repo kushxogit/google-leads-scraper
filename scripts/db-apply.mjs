@@ -52,6 +52,9 @@ async function run() {
     if (existingTables.has("workspace_notes")) {
       appliedFiles.add("202607220001_workspace_notes.sql");
     }
+    if (existingTables.has("task_projects") && existingTables.has("task_checklist_items")) {
+      appliedFiles.add("202607250001_task_projects.sql");
+    }
 
     // Record previously applied migrations in schema_migrations
     for (const file of appliedFiles) {

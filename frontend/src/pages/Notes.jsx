@@ -247,13 +247,13 @@ export default function Notes() {
   };
 
   if (noteApi.isLoading || taskApi.isLoading) {
-    return <div className="panel p-8 text-zinc-500">Opening your notes room...</div>;
+    return <div className="panel p-8 text-zinc-500 rounded-[24px]">Opening your notes room...</div>;
   }
 
   return (
     <div className="mx-auto max-w-[1500px] space-y-4 pb-8">
       {/* Header Banner */}
-      <header className="relative overflow-hidden rounded-[26px] bg-[#171719] p-5 text-white shadow-lg sm:p-7">
+      <header className="relative overflow-hidden rounded-[26px] bg-[#171719] p-5 text-white shadow-lg sm:p-6">
         <div className="absolute -right-12 -top-24 h-72 w-72 rounded-full bg-violet-500/70 blur-[78px]" />
         <div className="absolute right-[31%] top-0 h-36 w-36 rounded-full bg-emerald-300/20 blur-[55px]" />
         <div className="relative flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
@@ -261,38 +261,37 @@ export default function Notes() {
             <div className="flex items-center gap-2 text-[10px] font-extrabold uppercase tracking-[.18em] text-violet-200">
               <Sparkles size={13} /> Notes room
             </div>
-            <h1 className="mt-1.5 text-3xl font-extrabold tracking-[-.05em] sm:text-4xl">Keep the thread.</h1>
-            <p className="mt-1 max-w-xl text-xs leading-5 text-zinc-300 sm:text-sm">
+            <h1 className="mt-1 text-2xl sm:text-3xl font-extrabold tracking-tight">Keep the thread.</h1>
+            <p className="mt-1 max-w-xl text-xs leading-5 text-zinc-300">
               Capture your own thinking, open context to your team, and turn lines into real work.
             </p>
           </div>
           <div className="flex flex-wrap items-center gap-2 shrink-0">
-            <div className="rounded-xl border border-white/10 bg-white/[.08] px-3 py-1.5 text-xs font-bold text-zinc-300 hidden sm:block">
+            <div className="rounded-full border border-white/10 bg-white/[.08] px-3.5 py-1 text-xs font-extrabold text-zinc-300 hidden sm:block">
               {activeWorkspace?.type === "team" ? "Team workspace" : "Personal workspace"}
             </div>
             <button
               onClick={createNoteAndFocus}
-              className="inline-flex items-center justify-center gap-2 rounded-xl bg-white px-4 py-2.5 text-xs font-extrabold text-zinc-950 transition hover:bg-zinc-100 active:scale-95"
+              className="inline-flex items-center justify-center gap-2 rounded-full bg-white px-4 py-2 text-xs font-extrabold text-zinc-950 transition hover:bg-zinc-100 active:scale-95 shadow-md"
             >
-              <Plus size={16} /> New note
+              <Plus size={15} /> New note
             </button>
             <button
               onClick={() => setShowMoreOptions(!showMoreOptions)}
-              className="rounded-xl border border-white/15 px-3 py-2.5 text-xs font-extrabold text-white hover:bg-white/10"
+              className="rounded-full border border-white/20 px-3.5 py-2 text-xs font-bold text-white hover:bg-white/10"
             >
-              {showMoreOptions ? "Hide extra options" : "More note options"}
+              {showMoreOptions ? "Hide options" : "More options"}
             </button>
           </div>
         </div>
-        <p className="relative mt-4 text-xs text-zinc-300">Your notes save automatically. Use the visible task button when a thought needs follow-through.</p>
       </header>
 
-      {/* Mobile Screen Navigation Tabs (Visible only on screens below lg) */}
-      <nav className="flex rounded-2xl bg-zinc-100 p-1 lg:hidden">
+      {/* Mobile Navigation Tabs */}
+      <nav className="flex rounded-full bg-zinc-100/90 p-1 lg:hidden border border-zinc-200/60">
         <button
           onClick={() => setMobileTab("list")}
-          className={`flex-1 rounded-xl py-2 text-xs font-extrabold transition ${
-            mobileTab === "list" ? "bg-white text-violet-700 shadow-sm" : "text-zinc-600"
+          className={`flex-1 rounded-full py-1.5 text-xs font-extrabold transition ${
+            mobileTab === "list" ? "bg-white text-zinc-950 shadow-2xs" : "text-zinc-500"
           }`}
         >
           Notes ({visibleNotes.length})
@@ -300,37 +299,37 @@ export default function Notes() {
         <button
           onClick={() => setMobileTab("editor")}
           disabled={!activeNote}
-          className={`flex-1 rounded-xl py-2 text-xs font-extrabold transition ${
-            mobileTab === "editor" ? "bg-white text-violet-700 shadow-sm" : "text-zinc-600 disabled:opacity-40"
+          className={`flex-1 rounded-full py-1.5 text-xs font-extrabold transition ${
+            mobileTab === "editor" ? "bg-white text-zinc-950 shadow-2xs" : "text-zinc-500 disabled:opacity-40"
           }`}
         >
           Note Editor
         </button>
-        <button onClick={() => { setMobileTab("discussion"); setShowMoreOptions(true); }} disabled={!activeNote} className={`flex-1 rounded-xl py-2 text-xs font-extrabold transition ${mobileTab === "discussion" ? "bg-white text-violet-700 shadow-sm" : "text-zinc-600 disabled:opacity-40"}`}>More</button>
+        <button onClick={() => { setMobileTab("discussion"); setShowMoreOptions(true); }} disabled={!activeNote} className={`flex-1 rounded-full py-1.5 text-xs font-extrabold transition ${mobileTab === "discussion" ? "bg-white text-zinc-950 shadow-2xs" : "text-zinc-500 disabled:opacity-40"}`}>More</button>
       </nav>
 
       {/* Main Grid Section */}
       <div className={`grid gap-4 ${showMoreOptions ? "lg:grid-cols-[280px_minmax(0,1fr)_310px]" : "lg:grid-cols-[280px_minmax(0,1fr)]"}`}>
         {/* 1. Left Sidebar: Notes List */}
-        <aside className={`panel flex flex-col p-3 ${mobileTab !== "list" ? "hidden lg:flex" : "flex"} min-h-[500px]`}>
-          <div className="flex rounded-2xl bg-zinc-100 p-1">
+        <aside className={`panel flex flex-col p-3 rounded-[24px] ${mobileTab !== "list" ? "hidden lg:flex" : "flex"} min-h-[500px]`}>
+          <div className="flex rounded-full bg-zinc-100/80 p-0.5 border border-zinc-200/60">
             <TabButton active={view === "mine"} onClick={() => setView("mine")} icon={LockKeyhole} label="My notes" count={noteApi.notes.filter((note) => note.visibility === "private").length} />
             <TabButton active={view === "workspace"} onClick={() => setView("workspace")} icon={UsersRound} label="Workspace" count={noteApi.notes.filter((note) => note.visibility === "shared").length} />
           </div>
           <div className="mt-3">
-            <div className="control flex min-w-0 flex-1 items-center gap-2 px-3">
-              <Search size={14} className="shrink-0 text-zinc-400" />
+            <div className="control flex min-w-0 flex-1 items-center gap-2 px-3 rounded-full border border-zinc-200 bg-white">
+              <Search size={13} className="shrink-0 text-zinc-400" />
               <input
                 value={search}
                 onChange={(event) => setSearch(event.target.value)}
                 placeholder="Search notes or lines..."
-                className="min-w-0 flex-1 bg-transparent py-0.5 text-xs outline-none placeholder:text-zinc-400"
+                className="min-w-0 flex-1 bg-transparent py-1 text-xs outline-none placeholder:text-zinc-400"
               />
             </div>
           </div>
           <div className="mt-3 flex items-center justify-between px-1">
             <p className="eyebrow">{view === "mine" ? "Private" : "Workspace shared"}</p>
-            <button onClick={createNoteAndFocus} className="grid h-6 w-6 place-items-center rounded-lg bg-zinc-950 text-white hover:bg-zinc-800" aria-label="Create note">
+            <button onClick={createNoteAndFocus} className="grid h-6 w-6 place-items-center rounded-full bg-zinc-950 text-white hover:bg-zinc-800 transition shadow-2xs" aria-label="Create note">
               <Plus size={13} />
             </button>
           </div>
@@ -343,7 +342,7 @@ export default function Notes() {
         </aside>
 
         {/* 2. Middle Main: Note Editor */}
-        <main className={`panel overflow-hidden ${mobileTab !== "editor" ? "hidden lg:block" : "block"} min-h-[500px]`}>
+        <main className={`panel overflow-hidden rounded-[24px] ${mobileTab !== "editor" ? "hidden lg:block" : "block"} min-h-[500px]`}>
           {activeNote ? (
             <NoteEditor
               note={activeNote}
@@ -381,13 +380,77 @@ export default function Notes() {
 
         {/* 3. Right Sidebar: Info & Discussion */}
         <aside className={`space-y-4 ${(!showMoreOptions && mobileTab !== "discussion") ? "hidden" : mobileTab !== "discussion" ? "hidden lg:block" : "block"}`}>
-          <button onClick={() => { setShowMoreOptions(false); setMobileTab("editor"); }} className="button-secondary w-full justify-center">Hide extra note options</button>
+          <button onClick={() => { setShowMoreOptions(false); setMobileTab("editor"); }} className="button-secondary w-full justify-center text-xs py-2 rounded-full font-bold">Hide extra options</button>
           <CollaborationCard note={activeNote} members={noteApi.members} currentUserId={user?.id} />
           <MomentumCard note={activeNote} tasks={taskApi.tasks} />
           <CommentsCard note={activeNote} comments={comments} members={noteApi.members} />
         </aside>
       </div>
     </div>
+  );
+}
+
+function TabButton({ active, onClick, icon: Icon, label, count }) {
+  return (
+    <button
+      onClick={onClick}
+      className={`flex flex-1 items-center justify-center gap-1.5 rounded-full py-1.5 text-xs font-extrabold transition ${
+        active ? "bg-white text-zinc-950 shadow-2xs" : "text-zinc-500 hover:text-zinc-950"
+      }`}
+    >
+      <Icon size={12} />
+      <span>{label}</span>
+      <span className="rounded-full bg-zinc-200/80 px-2 py-0.2 text-[10px] font-bold text-zinc-700">
+        {count}
+      </span>
+    </button>
+  );
+}
+
+function NoteCard({ note, active, onClick, taskCount }) {
+  const accent = NOTE_ACCENTS[note.color] ?? NOTE_ACCENTS.violet;
+  const lineCount = note.lines?.length ?? 0;
+  const openCount = openLineCount(note);
+
+  return (
+    <button
+      onClick={onClick}
+      className={`group relative w-full text-left rounded-2xl p-3 border transition-all duration-150 ${
+        active
+          ? "border-zinc-950 bg-white shadow-xs"
+          : "border-zinc-200/70 bg-white/80 hover:bg-white hover:border-zinc-300"
+      }`}
+    >
+      <div className="flex items-start justify-between gap-2">
+        <div className="flex items-center gap-1.5 min-w-0">
+          <span className={`h-2 w-2 rounded-full shrink-0 ${accent}`} />
+          <h3 className={`truncate text-xs font-extrabold ${active ? "text-zinc-950" : "text-zinc-900 group-hover:text-violet-700"}`}>
+            {note.title || "Untitled note"}
+          </h3>
+        </div>
+        {note.is_pinned && <Pin size={11} className="text-amber-500 shrink-0" fill="currentColor" />}
+      </div>
+
+      <p className="mt-1 line-clamp-2 text-[11px] leading-4 text-zinc-500">
+        {note.body || "No additional notes..."}
+      </p>
+
+      <div className="mt-2.5 flex items-center justify-between border-t border-zinc-100 pt-2 text-[10px] text-zinc-400 font-semibold">
+        <span>{relative(note.updated_at)}</span>
+        <div className="flex items-center gap-1.5">
+          {lineCount > 0 && (
+            <span className="rounded-full bg-zinc-100 px-2 py-0.5 font-bold text-zinc-600">
+              {openCount} / {lineCount} open
+            </span>
+          )}
+          {taskCount > 0 && (
+            <span className="rounded-full bg-violet-50 px-2 py-0.5 font-bold text-violet-700">
+              {taskCount} task
+            </span>
+          )}
+        </div>
+      </div>
+    </button>
   );
 }
 
@@ -400,34 +463,33 @@ function NoteEditor({ note, task, tasks, members, currentUserId, canEdit, title,
       <div className={`h-2 w-full ${NOTE_ACCENTS[note.color] || NOTE_ACCENTS.violet}`} />
       
       {/* Top Bar inside Editor */}
-      <div className="border-b border-zinc-100 px-4 py-4 sm:px-7">
+      <div className="border-b border-zinc-200/60 px-4 py-4 sm:px-7">
         <div className="flex flex-wrap items-center justify-between gap-2">
           <div className="flex items-center gap-2">
-            {/* Mobile Back Button */}
             <button
               onClick={onBackToList}
-              className="inline-flex items-center gap-1 rounded-lg border border-zinc-200 bg-white px-2.5 py-1 text-xs font-bold text-zinc-600 hover:bg-zinc-50 lg:hidden"
+              className="inline-flex items-center gap-1 rounded-full border border-zinc-200 bg-white px-3 py-1 text-xs font-extrabold text-zinc-700 hover:bg-zinc-50 lg:hidden shadow-2xs"
             >
               <ArrowLeft size={13} /> Notes
             </button>
 
-            <span className={`inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1 text-[10px] font-extrabold uppercase tracking-[.12em] ${isShared ? "bg-emerald-100 text-emerald-700" : "bg-zinc-100 text-zinc-600"}`}>
+            <span className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-[10px] font-extrabold ${isShared ? "bg-emerald-100/90 text-emerald-800 border border-emerald-200/70" : "bg-zinc-100 text-zinc-600 border border-zinc-200/60"}`}>
               {isShared ? <Globe2 size={12} /> : <LockKeyhole size={12} />} {isShared ? "Workspace note" : "Private note"}
             </span>
-            <span className="text-[11px] text-zinc-400 hidden sm:inline">Updated {relative(note.updated_at)}</span>
+            <span className="text-[11px] text-zinc-400 font-medium hidden sm:inline">Updated {relative(note.updated_at)}</span>
           </div>
 
           <div className="flex items-center gap-1.5 ml-auto">
             {dirty && <span className="mr-1 text-[11px] font-bold text-amber-600">Saving...</span>}
-            {dirty && <button onClick={onSave} className="button-primary px-2.5 py-1 text-xs">Save</button>}
-            <button onClick={onPin} disabled={!canEdit} className={`grid h-8 w-8 place-items-center rounded-xl ${note.is_pinned ? "bg-amber-100 text-amber-600" : "bg-zinc-100 text-zinc-400 hover:text-zinc-700"}`} aria-label={note.is_pinned ? "Unpin note" : "Pin note"}>
-              <Pin size={14} fill={note.is_pinned ? "currentColor" : "none"} />
+            {dirty && <button onClick={onSave} className="button-primary px-3 py-1 text-xs rounded-full">Save</button>}
+            <button onClick={onPin} disabled={!canEdit} className={`grid h-8 w-8 place-items-center rounded-full ${note.is_pinned ? "bg-amber-100 text-amber-700" : "bg-zinc-100 text-zinc-400 hover:text-zinc-700"}`} aria-label={note.is_pinned ? "Unpin note" : "Pin note"}>
+              <Pin size={13} fill={note.is_pinned ? "currentColor" : "none"} />
             </button>
-            <button onClick={onArchive} disabled={!canEdit} className="grid h-8 w-8 place-items-center rounded-xl bg-zinc-100 text-zinc-400 hover:text-zinc-700" aria-label="Archive note">
-              <Archive size={14} />
+            <button onClick={onArchive} disabled={!canEdit} className="grid h-8 w-8 place-items-center rounded-full bg-zinc-100 text-zinc-400 hover:text-zinc-700" aria-label="Archive note">
+              <Archive size={13} />
             </button>
-            <button onClick={onDelete} disabled={note.owner_id !== currentUserId} className="grid h-8 w-8 place-items-center rounded-xl bg-zinc-100 text-zinc-400 hover:text-rose-600" aria-label="Delete note">
-              <Trash2 size={14} />
+            <button onClick={onDelete} disabled={note.owner_id !== currentUserId} className="grid h-8 w-8 place-items-center rounded-full bg-zinc-100 text-zinc-400 hover:text-rose-600" aria-label="Delete note">
+              <Trash2 size={13} />
             </button>
           </div>
         </div>
@@ -439,25 +501,25 @@ function NoteEditor({ note, task, tasks, members, currentUserId, canEdit, title,
               value={title}
               onChange={(event) => onTitleChange(event.target.value)}
               disabled={!canEdit}
-              className="w-full bg-transparent text-2xl font-extrabold tracking-[-.04em] text-zinc-950 outline-none placeholder:text-zinc-300 sm:text-3xl"
+              className="w-full bg-transparent text-2xl font-extrabold tracking-tight text-zinc-950 outline-none placeholder:text-zinc-300 sm:text-3xl"
               placeholder="Untitled note"
             />
-            <p className="mt-1 flex items-center gap-1.5 text-xs text-zinc-400">
+            <p className="mt-1 flex items-center gap-1.5 text-xs text-zinc-400 font-semibold">
               <UserRound size={13} /> {note.owner_id === currentUserId ? "Created by you" : `Started by ${owner?.full_name || owner?.email || "Teammate"}`}
               <span className="text-zinc-300">•</span> {note.lines?.length ?? 0} action lines
             </p>
           </div>
           <div className="flex flex-wrap items-center gap-2 sm:shrink-0">
-            <select value={note.visibility} disabled={!canEdit} onChange={(event) => onVisibilityChange(event.target.value)} className="control py-1.5 px-2 text-xs font-bold">
+            <select value={note.visibility} disabled={!canEdit} onChange={(event) => onVisibilityChange(event.target.value)} className="control py-1 px-3 text-xs font-bold rounded-full">
               <option value="private">Private</option>
               <option value="shared">Workspace shared</option>
             </select>
             {task ? (
-              <button onClick={() => onOpenTask(task)} className="button-secondary py-1.5 px-3 text-xs">
+              <button onClick={() => onOpenTask(task)} className="button-secondary py-1 px-3.5 text-xs rounded-full font-bold">
                 <CheckCircle2 size={13} /> Open task
               </button>
             ) : (
-              <button onClick={() => onMakeTask()} disabled={!canEdit} className="button-primary py-1.5 px-3 text-xs">
+              <button onClick={() => onMakeTask()} disabled={!canEdit} className="button-primary py-1 px-3.5 text-xs rounded-full font-bold">
                 <ListPlus size={13} /> Make task
               </button>
             )}
@@ -466,9 +528,9 @@ function NoteEditor({ note, task, tasks, members, currentUserId, canEdit, title,
       </div>
 
       {/* Note Body & Action Lines */}
-      <div className="flex-1 px-4 py-4 sm:px-7 sm:py-6">
+      <div className="flex-1 px-4 py-4 sm:px-7 sm:py-6 space-y-4">
         {!canEdit && (
-          <div className="mb-4 flex items-center gap-2 rounded-xl border border-amber-100 bg-amber-50 p-3 text-xs font-semibold text-amber-800">
+          <div className="flex items-center gap-2 rounded-2xl border border-amber-200/80 bg-amber-50 p-3 text-xs font-bold text-amber-800">
             <LockKeyhole size={14} /> Private note belonging to another workspace member.
           </div>
         )}
@@ -479,24 +541,24 @@ function NoteEditor({ note, task, tasks, members, currentUserId, canEdit, title,
             onChange={(event) => onBodyChange(event.target.value)}
             disabled={!canEdit}
             rows={5}
-            className="w-full resize-none bg-transparent text-sm leading-6 text-zinc-700 outline-none placeholder:text-zinc-300 sm:text-base sm:leading-7"
+            className="w-full resize-none bg-transparent text-sm leading-6 text-zinc-700 outline-none placeholder:text-zinc-300 sm:text-base sm:leading-7 font-medium"
             placeholder="What is this note trying to hold onto? Add context, decisions, or links..."
           />
         </div>
 
         {/* Action Lines Checklist */}
-        <section className="mt-6 rounded-2xl border border-zinc-100 bg-zinc-50/70 p-3.5 sm:p-4">
+        <section className="rounded-2xl border border-zinc-200/70 bg-zinc-50/60 p-3.5 sm:p-4 backdrop-blur-xs">
           <div className="flex items-center justify-between gap-2">
             <div className="flex items-center gap-2">
-              <span className="grid h-7 w-7 place-items-center rounded-xl bg-zinc-950 text-white">
+              <span className="grid h-7 w-7 place-items-center rounded-xl bg-zinc-950 text-white shadow-2xs">
                 <ListChecks size={14} />
               </span>
               <div>
-                <p className="text-xs font-extrabold text-zinc-900">Action lines</p>
+                <p className="text-xs font-extrabold text-zinc-950">Action lines</p>
                 <p className="text-[11px] text-zinc-400 hidden sm:block">Tasks and next steps derived from this note.</p>
               </div>
             </div>
-            <span className="rounded-lg bg-white px-2 py-1 text-[11px] font-extrabold text-zinc-600 shadow-2xs">
+            <span className="rounded-full bg-white px-2.5 py-0.5 text-[10px] font-extrabold text-zinc-700 shadow-2xs border border-zinc-200/60">
               {doneCount(note.lines)} / {note.lines?.length ?? 0} done
             </span>
           </div>
@@ -521,19 +583,19 @@ function NoteEditor({ note, task, tasks, members, currentUserId, canEdit, title,
           </div>
 
           {canEdit && (
-            <form onSubmit={onAddLine} className="mt-3 flex items-center gap-2 rounded-xl border border-dashed border-zinc-200 bg-white p-1.5">
-              <span className="grid h-7 w-7 place-items-center rounded-lg text-zinc-400">
+            <form onSubmit={onAddLine} className="mt-3 flex items-center gap-2 rounded-2xl border border-dashed border-zinc-200 bg-white p-1.5 shadow-2xs">
+              <span className="grid h-7 w-7 place-items-center rounded-xl text-zinc-400">
                 <Plus size={14} />
               </span>
               <input
                 value={newLine}
                 onChange={(event) => onNewLineChange(event.target.value)}
                 placeholder="Add an action line..."
-                className="min-w-0 flex-1 bg-transparent px-1 text-xs sm:text-sm outline-none placeholder:text-zinc-400"
+                className="min-w-0 flex-1 bg-transparent px-1 text-xs sm:text-sm outline-none placeholder:text-zinc-400 font-medium"
               />
               <button
                 disabled={savingLine || !newLine.trim()}
-                className="rounded-lg bg-zinc-100 px-3 py-1.5 text-xs font-extrabold text-zinc-700 hover:bg-zinc-200 disabled:opacity-40"
+                className="rounded-full bg-zinc-950 px-3.5 py-1 text-xs font-extrabold text-white hover:bg-zinc-800 disabled:opacity-40 transition"
               >
                 Add
               </button>
@@ -545,8 +607,8 @@ function NoteEditor({ note, task, tasks, members, currentUserId, canEdit, title,
         </section>
 
         {/* Note Mood / Color options */}
-        <div className="mt-5 flex items-center gap-2">
-          <span className="flex items-center gap-1 text-[10px] font-extrabold uppercase tracking-[.14em] text-zinc-400">
+        <div className="flex items-center gap-2 pt-2">
+          <span className="flex items-center gap-1 text-[10px] font-extrabold uppercase tracking-wider text-zinc-400">
             <Palette size={12} /> Note mood
           </span>
           <div className="flex items-center gap-1.5 ml-2">
@@ -578,14 +640,14 @@ function NoteLine({ line, task, canEdit, onToggle, onUpdate, onDelete, onMakeTas
   };
 
   return (
-    <div className={`group flex items-center gap-2 rounded-xl border p-2 transition ${line.is_done ? "border-emerald-100 bg-emerald-50/50" : "border-zinc-100 bg-white"}`}>
+    <div className={`group flex items-center gap-2 rounded-2xl border p-2 transition ${line.is_done ? "border-emerald-200/60 bg-emerald-50/50" : "border-zinc-200/60 bg-white"}`}>
       <button
         disabled={!canEdit}
         onClick={onToggle}
-        className={`grid h-7 w-7 shrink-0 place-items-center rounded-lg ${line.is_done ? "bg-emerald-500 text-white" : "bg-zinc-100 text-zinc-400 hover:text-zinc-600"}`}
+        className={`grid h-6 w-6 shrink-0 place-items-center rounded-full ${line.is_done ? "bg-emerald-600 text-white" : "bg-zinc-100 text-zinc-400 hover:text-zinc-600"}`}
         aria-label={line.is_done ? "Mark line open" : "Mark line done"}
       >
-        {line.is_done ? <Check size={14} /> : <Circle size={14} />}
+        {line.is_done ? <Check size={12} /> : <Circle size={12} />}
       </button>
       <input
         value={draft}
@@ -604,16 +666,16 @@ function NoteLine({ line, task, canEdit, onToggle, onUpdate, onDelete, onMakeTas
         }`}
       />
       {task ? (
-        <button onClick={onOpenTask} className="inline-flex shrink-0 items-center gap-1 rounded-lg bg-violet-100 px-2 py-1 text-[10px] font-extrabold text-violet-700">
-          <CheckCircle2 size={12} /> Task
+        <button onClick={onOpenTask} className="inline-flex shrink-0 items-center gap-1 rounded-full bg-violet-100 px-2.5 py-0.5 text-[10px] font-extrabold text-violet-700 border border-violet-200/60">
+          <CheckCircle2 size={11} /> Task
         </button>
       ) : (
-        <button disabled={!canEdit} onClick={onMakeTask} className="inline-flex shrink-0 items-center gap-1 rounded-lg bg-zinc-100 px-2 py-1 text-[10px] font-extrabold text-zinc-500 hover:bg-violet-100 hover:text-violet-700 transition">
-          <ListPlus size={12} /> Task
+        <button disabled={!canEdit} onClick={onMakeTask} className="inline-flex shrink-0 items-center gap-1 rounded-full bg-zinc-100 px-2.5 py-0.5 text-[10px] font-extrabold text-zinc-500 hover:bg-violet-100 hover:text-violet-700 transition">
+          <ListPlus size={11} /> Task
         </button>
       )}
-      <button disabled={!canEdit} onClick={onDelete} className="grid h-7 w-7 shrink-0 place-items-center rounded-lg text-zinc-300 opacity-0 hover:bg-rose-50 hover:text-rose-500 group-hover:opacity-100 focus:opacity-100 transition" aria-label="Delete line">
-        <X size={13} />
+      <button disabled={!canEdit} onClick={onDelete} className="grid h-6 w-6 shrink-0 place-items-center rounded-full text-zinc-300 opacity-0 hover:bg-rose-50 hover:text-rose-500 group-hover:opacity-100 focus:opacity-100 transition" aria-label="Delete line">
+        <X size={12} />
       </button>
     </div>
   );
@@ -624,14 +686,14 @@ function CollaborationCard({ note, members, currentUserId }) {
   const people = members.slice(0, 5);
 
   return (
-    <section className="panel p-4">
+    <section className="panel p-4 rounded-[24px]">
       <div className="flex items-start gap-3">
-        <span className={`grid h-9 w-9 place-items-center rounded-xl ${shared ? "bg-emerald-100 text-emerald-700" : "bg-zinc-100 text-zinc-500"}`}>
+        <span className={`grid h-9 w-9 place-items-center rounded-2xl ${shared ? "bg-emerald-100 text-emerald-800" : "bg-zinc-100 text-zinc-600"}`}>
           {shared ? <UsersRound size={17} /> : <LockKeyhole size={16} />}
         </span>
         <div className="min-w-0">
           <p className="eyebrow">{shared ? "Collaboration" : "Personal space"}</p>
-          <h2 className="mt-0.5 text-base font-extrabold">{shared ? "Shared workspace note" : "Private note"}</h2>
+          <h2 className="mt-0.5 text-base font-extrabold text-zinc-950">{shared ? "Shared workspace note" : "Private note"}</h2>
         </div>
       </div>
       {shared ? (
@@ -640,7 +702,7 @@ function CollaborationCard({ note, members, currentUserId }) {
           <div className="mt-4 flex items-center justify-between">
             <div className="flex -space-x-1.5">
               {people.map((member) => (
-                <span key={member.id} title={member.full_name || member.email} className="grid h-7 w-7 place-items-center rounded-full border-2 border-white bg-violet-100 text-[10px] font-extrabold text-violet-700">
+                <span key={member.id} title={member.full_name || member.email} className="grid h-7 w-7 place-items-center rounded-full border-2 border-white bg-violet-100 text-[10px] font-extrabold text-violet-700 shadow-2xs">
                   {initials(member)}
                 </span>
               ))}
@@ -658,8 +720,8 @@ function CollaborationCard({ note, members, currentUserId }) {
       ) : (
         <>
           <p className="mt-2 text-xs leading-5 text-zinc-500">Private notes are visible only to you.</p>
-          <div className="mt-3 flex items-center gap-2 rounded-xl bg-zinc-50 p-2.5 text-xs font-semibold text-zinc-500">
-            <span className="grid h-6 w-6 place-items-center rounded-full bg-white text-zinc-700">{initials(members.find((m) => m.id === currentUserId))}</span> Only you can see this note
+          <div className="mt-3 flex items-center gap-2 rounded-2xl bg-zinc-50 p-2.5 text-xs font-semibold text-zinc-600">
+            <span className="grid h-6 w-6 place-items-center rounded-full bg-white text-zinc-700 shadow-2xs">{initials(members.find((m) => m.id === currentUserId))}</span> Only you can see this note
           </div>
         </>
       )}
@@ -673,7 +735,7 @@ function MomentumCard({ note, tasks }) {
   const open = (note.lines ?? []).filter((line) => !line.is_done).length;
 
   return (
-    <section className="panel p-4">
+    <section className="panel p-4 rounded-[24px]">
       <div className="flex items-center gap-2">
         <span className="grid h-7 w-7 place-items-center rounded-xl bg-violet-100 text-violet-700">
           <ArrowUpRight size={14} />
@@ -689,289 +751,100 @@ function MomentumCard({ note, tasks }) {
   );
 }
 
-/**
- * CommentsCard Component with @Mention Autocomplete Dropup/Dropdown
- */
 function CommentsCard({ note, comments, members }) {
   const [body, setBody] = useState("");
   const [sending, setSending] = useState(false);
-  const [mentionQuery, setMentionQuery] = useState(null);
-  const [mentionIndex, setMentionIndex] = useState(0);
-  const [cursorPos, setCursorPos] = useState(0);
-  const inputRef = useRef(null);
   const { notify } = useFeedback();
 
-  if (!note) {
+  if (!note || note.visibility !== "shared") {
     return (
-      <section className="panel p-4">
+      <section className="panel p-4 rounded-[24px]">
         <div className="flex items-center gap-2 text-zinc-400">
           <MessageCircle size={15} />
           <p className="font-extrabold text-xs text-zinc-600">Discussion</p>
         </div>
-        <p className="mt-2 text-xs text-zinc-400">Select a note to see discussion.</p>
+        <p className="mt-2 text-xs text-zinc-400">
+          {note ? "Discussion opens when you share this note." : "Select a note to see discussion."}
+        </p>
       </section>
     );
   }
 
-  if (note.visibility !== "shared") {
-    return (
-      <section className="panel p-4">
-        <div className="flex items-center gap-2 text-zinc-400">
-          <MessageCircle size={15} />
-          <p className="font-extrabold text-xs text-zinc-600">Discussion</p>
-        </div>
-        <p className="mt-2 text-xs text-zinc-400">Discussion opens when you share this note with the workspace.</p>
-      </section>
-    );
-  }
-
-  // Filter members for @mention dropdown based on query
-  const matchingTeammates = (members || []).filter((member) => {
-    if (mentionQuery === null) return false;
-    const q = mentionQuery.toLowerCase();
-    const name = (member.full_name || "").toLowerCase();
-    const email = (member.email || "").toLowerCase();
-    const handle = email.split("@")[0];
-    return name.includes(q) || email.includes(q) || handle.includes(q);
-  });
-
-  const handleInputChange = (event) => {
-    const val = event.target.value;
-    const cursor = event.target.selectionStart;
-    setBody(val);
-    setCursorPos(cursor);
-
-    // Detect if cursor is preceded by @ query
-    const textBeforeCursor = val.slice(0, cursor);
-    const lastAt = textBeforeCursor.lastIndexOf("@");
-
-    if (lastAt !== -1) {
-      const queryAfterAt = textBeforeCursor.slice(lastAt + 1);
-      if (!/\s/.test(queryAfterAt)) {
-        setMentionQuery(queryAfterAt);
-        setMentionIndex(0);
-        return;
-      }
-    }
-    setMentionQuery(null);
-  };
-
-  const insertMention = (member) => {
-    const handle = member.full_name?.trim() || member.email.split("@")[0];
-    const textBeforeCursor = body.slice(0, cursorPos);
-    const lastAt = textBeforeCursor.lastIndexOf("@");
-    const textAfterCursor = body.slice(cursorPos);
-
-    const newBody = `${body.slice(0, lastAt)}@${handle} ${textAfterCursor}`;
-    setBody(newBody);
-    setMentionQuery(null);
-
-    setTimeout(() => {
-      if (inputRef.current) {
-        inputRef.current.focus();
-        const newPos = lastAt + handle.length + 2;
-        inputRef.current.setSelectionRange(newPos, newPos);
-      }
-    }, 0);
-  };
-
-  const handleKeyDown = (event) => {
-    if (mentionQuery !== null && matchingTeammates.length > 0) {
-      if (event.key === "ArrowDown") {
-        event.preventDefault();
-        setMentionIndex((prev) => (prev + 1) % matchingTeammates.length);
-      } else if (event.key === "ArrowUp") {
-        event.preventDefault();
-        setMentionIndex((prev) => (prev - 1 + matchingTeammates.length) % matchingTeammates.length);
-      } else if (event.key === "Enter" || event.key === "Tab") {
-        event.preventDefault();
-        insertMention(matchingTeammates[mentionIndex]);
-      } else if (event.key === "Escape") {
-        setMentionQuery(null);
-      }
-    }
-  };
-
-  const submit = async (event) => {
-    event.preventDefault();
+  const submit = async (e) => {
+    e.preventDefault();
     if (!body.trim()) return;
     setSending(true);
-    setMentionQuery(null);
     try {
       await comments.addComment(body);
       setBody("");
-    } catch (error) {
-      notify(error.message, "error");
+    } catch (err) {
+      notify(err.message, "error");
     } finally {
       setSending(false);
     }
   };
 
   return (
-    <section className="panel p-4 relative">
-      <div className="flex items-center justify-between gap-2">
-        <div className="flex items-center gap-2">
-          <span className="grid h-7 w-7 place-items-center rounded-lg bg-cyan-100 text-cyan-700">
-            <MessageCircle size={14} />
-          </span>
-          <div>
-            <p className="eyebrow">Shared note</p>
-            <h2 className="text-sm font-extrabold text-zinc-900">Discussion</h2>
-          </div>
+    <section className="panel p-4 rounded-[24px] space-y-3">
+      <div className="flex items-center justify-between border-b border-zinc-100 pb-2">
+        <div className="flex items-center gap-2 text-zinc-950">
+          <MessageCircle size={15} className="text-violet-600" />
+          <p className="font-extrabold text-xs">Discussion</p>
         </div>
-        <span className="rounded-lg bg-zinc-100 px-2 py-0.5 text-[10px] font-extrabold text-zinc-600">
+        <span className="rounded-full bg-zinc-100 px-2 py-0.5 text-[10px] font-bold text-zinc-600">
           {comments.comments.length}
         </span>
       </div>
 
-      {/* Comment Form with Floating @Mention Dropup */}
-      <form onSubmit={submit} className="relative mt-3">
-        {/* @Mention Dropup Popup */}
-        {mentionQuery !== null && (
-          <div className="absolute bottom-full left-0 mb-2 w-full max-h-48 overflow-y-auto rounded-xl border border-zinc-200 bg-white p-1 shadow-xl z-50 animate-in fade-in slide-in-from-bottom-2">
-            <div className="px-2 py-1 text-[10px] font-extrabold uppercase tracking-wider text-zinc-400">
-              Mention teammate
-            </div>
-            {matchingTeammates.map((member, idx) => {
-              const isSelected = idx === mentionIndex;
-              const displayName = member.full_name || member.email.split("@")[0];
-              return (
-                <button
-                  key={member.id}
-                  type="button"
-                  onMouseDown={(e) => {
-                    e.preventDefault();
-                    insertMention(member);
-                  }}
-                  className={`flex w-full items-center gap-2.5 rounded-lg px-2 py-1.5 text-left text-xs transition ${
-                    isSelected ? "bg-violet-50 text-violet-900 font-bold" : "text-zinc-700 hover:bg-zinc-100"
-                  }`}
-                >
-                  <span className="grid h-6 w-6 shrink-0 place-items-center rounded-full bg-violet-100 text-[10px] font-bold text-violet-700">
-                    {initials(member)}
-                  </span>
-                  <div className="min-w-0 flex-1 truncate">
-                    <p className="truncate font-semibold text-xs">{displayName}</p>
-                    <p className="truncate text-[10px] text-zinc-400">{member.email}</p>
-                  </div>
-                </button>
-              );
-            })}
-            {matchingTeammates.length === 0 && (
-              <div className="p-2.5 text-center text-xs text-zinc-400">No teammates found</div>
-            )}
-          </div>
-        )}
-
-        <div className="flex items-center gap-2">
-          <input
-            ref={inputRef}
-            value={body}
-            onChange={handleInputChange}
-            onKeyDown={handleKeyDown}
-            placeholder="Add context or type @ to mention..."
-            className="control min-w-0 flex-1 text-xs py-2 px-3"
-          />
-          <button
-            disabled={sending || !body.trim()}
-            className="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-zinc-950 text-white transition hover:bg-zinc-800 disabled:opacity-40"
-            aria-label="Send comment"
-          >
-            <Send size={14} />
-          </button>
-        </div>
-      </form>
-
-      <p className="mt-1.5 text-[10px] text-zinc-400 flex items-center gap-1">
-        <AtSign size={11} className="inline text-violet-500" /> Type @ to mention a teammate in this note.
-      </p>
-
-      {/* Comments List */}
-      <div className="mt-4 space-y-3 max-h-60 overflow-y-auto pr-1">
-        {comments.comments.slice(-10).map((comment) => {
-          const author = members.find((member) => member.id === comment.author_id);
+      <div className="max-h-56 overflow-y-auto space-y-2 scrollbar-thin">
+        {comments.comments.map((comment) => {
+          const author = members.find((m) => m.id === comment.user_id);
           return (
-            <article key={comment.id} className="rounded-xl border border-zinc-100 bg-zinc-50/60 p-2.5 text-xs">
-              <div className="flex items-center justify-between gap-1 text-[10px] font-bold text-zinc-400">
-                <span className="text-zinc-700">{author?.full_name || author?.email || "Workspace member"}</span>
+            <div key={comment.id} className="rounded-2xl border border-zinc-100 bg-white/90 p-2.5 text-xs shadow-2xs">
+              <div className="flex items-center justify-between text-[10px] text-zinc-400 font-semibold">
+                <span className="font-bold text-zinc-800">{author?.full_name || author?.email || "Teammate"}</span>
                 <span>{relative(comment.created_at)}</span>
               </div>
-              <p className="mt-1 text-zinc-800 leading-relaxed font-normal">{renderCommentBody(comment.body, members)}</p>
-            </article>
+              <p className="mt-1 text-zinc-700 text-xs">{comment.body}</p>
+            </div>
           );
         })}
         {!comments.comments.length && (
-          <p className="rounded-xl bg-zinc-50 p-3 text-center text-xs text-zinc-400">No discussion yet. Leave a note comment.</p>
+          <p className="py-4 text-center text-xs text-zinc-400">No comments yet. Start the thread!</p>
         )}
       </div>
+
+      <form onSubmit={submit} className="flex gap-1.5">
+        <input
+          value={body}
+          onChange={(e) => setBody(e.target.value)}
+          placeholder="Add a comment..."
+          className="control flex-1 text-xs py-1.5 rounded-full"
+        />
+        <button disabled={sending || !body.trim()} className="button-primary text-xs px-3 py-1.5 rounded-full font-bold">
+          <Send size={12} />
+        </button>
+      </form>
     </section>
-  );
-}
-
-function NoteCard({ note, active, onClick, taskCount }) {
-  const done = doneCount(note.lines);
-  return (
-    <button
-      onClick={onClick}
-      className={`w-full rounded-xl border p-3 text-left transition ${
-        active ? "border-violet-300 bg-violet-50/80 shadow-xs" : `${NOTE_COLORS[note.color] || NOTE_COLORS.violet} hover:shadow-xs`
-      }`}
-    >
-      <div className="flex items-center gap-2">
-        <span className={`h-2 w-2 rounded-full ${NOTE_ACCENTS[note.color] || NOTE_ACCENTS.violet}`} />
-        <span className="min-w-0 flex-1 truncate text-xs font-extrabold text-zinc-900">{note.title}</span>
-        {note.is_pinned && <Pin size={12} className="shrink-0 text-amber-500" fill="currentColor" />}
-      </div>
-      <p className="mt-1.5 line-clamp-2 text-[11px] leading-4 opacity-70">{note.body || "Empty note canvas."}</p>
-      <div className="mt-2.5 flex items-center gap-2 text-[10px] font-bold opacity-60">
-        <span>{relative(note.updated_at)}</span>
-        <span>•</span>
-        <span className="flex items-center gap-1">
-          <ListChecks size={11} /> {done}/{note.lines?.length ?? 0}
-        </span>
-        {taskCount > 0 && (
-          <span className="ml-auto flex items-center gap-1 text-violet-700 font-extrabold">
-            <CheckCircle2 size={11} /> {taskCount}
-          </span>
-        )}
-      </div>
-    </button>
-  );
-}
-
-function TabButton({ active, onClick, icon: Icon, label, count }) {
-  return (
-    <button
-      onClick={onClick}
-      className={`flex min-w-0 flex-1 items-center justify-center gap-1.5 rounded-xl px-2 py-2 text-xs font-extrabold transition ${
-        active ? "bg-white text-violet-700 shadow-2xs" : "text-zinc-500 hover:text-zinc-800"
-      }`}
-    >
-      <Icon size={13} />
-      <span className="truncate">{label}</span>
-      <span className="rounded-md bg-zinc-100 px-1.5 py-0.5 text-[9px]">{count}</span>
-    </button>
   );
 }
 
 function MiniStat({ value, label }) {
   return (
-    <div className="rounded-xl bg-zinc-50 p-2.5 text-center">
-      <p className="mono text-lg font-medium text-zinc-900">{value}</p>
-      <p className="mt-0.5 text-[9px] font-bold uppercase tracking-[.1em] text-zinc-400">{label}</p>
+    <div className="rounded-2xl border border-zinc-200/60 bg-white/80 p-2 text-center shadow-2xs">
+      <p className="mono text-lg font-extrabold text-zinc-950">{value}</p>
+      <p className="text-[10px] font-bold uppercase tracking-wider text-zinc-400">{label}</p>
     </div>
   );
 }
 
 function EmptyNotes({ view, onCreate }) {
   return (
-    <div className="rounded-xl border border-dashed border-zinc-200 p-4 text-center">
-      <span className="mx-auto grid h-8 w-8 place-items-center rounded-xl bg-violet-100 text-violet-600">
-        {view === "mine" ? <LockKeyhole size={15} /> : <UsersRound size={15} />}
-      </span>
-      <p className="mt-2 text-xs font-extrabold">{view === "mine" ? "No private notes" : "No shared notes"}</p>
-      <button onClick={onCreate} className="mt-3 text-xs font-extrabold text-violet-600 hover:underline">
-        Create one <ArrowUpRight size={12} className="inline" />
+    <div className="rounded-2xl border border-dashed border-zinc-200 p-6 text-center text-xs text-zinc-400">
+      <FileText size={20} className="mx-auto mb-2 text-zinc-300" />
+      <p className="font-bold text-zinc-600">No {view} notes found</p>
+      <button onClick={onCreate} className="mt-2 text-violet-600 font-bold hover:underline">
+        Create one now
       </button>
     </div>
   );
@@ -979,62 +852,40 @@ function EmptyNotes({ view, onCreate }) {
 
 function EmptyEditor({ view, onCreate }) {
   return (
-    <div className="grid min-h-[500px] place-items-center p-6 text-center">
-      <div className="max-w-xs">
-        <span className="mx-auto grid h-12 w-12 place-items-center rounded-2xl bg-violet-100 text-violet-600">
-          <FileText size={20} />
-        </span>
-        <p className="eyebrow mt-4">{view === "mine" ? "Private space" : "Team room"}</p>
-        <h2 className="mt-1.5 text-xl font-extrabold tracking-[-.03em]">Select a note or create a new one.</h2>
-        <button onClick={onCreate} className="button-primary mt-5">
-          <Plus size={15} /> New note
-        </button>
-      </div>
+    <div className="flex h-full min-h-[400px] flex-col items-center justify-center p-8 text-center text-zinc-400">
+      <FileText size={32} className="mb-3 text-zinc-300" />
+      <h2 className="text-sm font-extrabold text-zinc-800">No note selected</h2>
+      <p className="mt-1 max-w-xs text-xs text-zinc-400">Select a note from the left sidebar or create a new one to begin editing.</p>
+      <button onClick={onCreate} className="button-primary mt-4 text-xs py-2 px-4 rounded-full font-bold">
+        <Plus size={14} /> Create new note
+      </button>
     </div>
   );
 }
 
-function renderCommentBody(text, _members = []) {
-  if (!text) return "";
-  const parts = text.split(/(@[\w.-]+(?:\s+[\w.-]+)?)/g);
-  return parts.map((part, idx) => {
-    if (part.startsWith("@")) {
-      return (
-        <span key={idx} className="font-extrabold text-violet-700 bg-violet-100/70 px-1 py-0.5 rounded text-[11px]">
-          {part}
-        </span>
-      );
-    }
-    return part;
-  });
+function initials(user) {
+  if (!user) return "U";
+  const name = user.full_name || user.email || "U";
+  return name[0].toUpperCase();
 }
 
-function doneCount(lines = []) {
-  return lines.filter((line) => line.is_done).length;
+function relative(iso) {
+  if (!iso) return "just now";
+  try {
+    return formatDistanceToNow(new Date(iso), { addSuffix: true });
+  } catch (e) {
+    return "recently";
+  }
 }
 
 function openLineCount(note) {
   return (note.lines ?? []).filter((line) => !line.is_done).length;
 }
 
+function doneCount(lines = []) {
+  return (lines ?? []).filter((line) => line.is_done).length;
+}
+
 function taskCountForNote(note, tasks) {
   return tasks.filter((task) => task.source_note_id === note.id).length;
-}
-
-function initials(member) {
-  return (member?.full_name || member?.email || "U")
-    .split(/[\s@]/)
-    .filter(Boolean)
-    .map((part) => part[0])
-    .slice(0, 2)
-    .join("")
-    .toUpperCase() || "U";
-}
-
-function relative(value) {
-  try {
-    return formatDistanceToNow(new Date(value), { addSuffix: true });
-  } catch {
-    return "recently";
-  }
 }

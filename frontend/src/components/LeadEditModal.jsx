@@ -2,7 +2,8 @@ import { useState, useEffect } from "react";
 import { X } from "lucide-react";
 import { useFeedback } from "../context/feedback";
 
-export default function LeadEditModal({ lead, isOpen, onClose, onSave }) {
+export default function LeadEditModal({ lead, isOpen: isOpenProp, open: openProp, onClose, onSave }) {
+  const isOpen = Boolean(isOpenProp || openProp);
   const { notify } = useFeedback();
   const [form, setForm] = useState({
     business_name: "",

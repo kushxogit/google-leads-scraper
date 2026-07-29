@@ -8,6 +8,8 @@ const empty = {
   description: "",
   category: "development",
   priority: "medium",
+  status: "unplanned",
+  waiting_on: "",
   lead_id: "",
   project_id: "",
   due_at: "",
@@ -18,7 +20,8 @@ const empty = {
 };
 
 export default function TaskModal({
-  open,
+  open: openProp,
+  isOpen: isOpenProp,
   onClose,
   onSave,
   members = [],
@@ -30,6 +33,7 @@ export default function TaskModal({
   projects = [],
   onManageProjects,
 }) {
+  const open = Boolean(openProp || isOpenProp);
   const [form, setForm] = useState(empty);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
@@ -44,6 +48,8 @@ export default function TaskModal({
             description: task.description,
             category: task.category,
             priority: task.priority,
+            status: task.status,
+            waiting_on: task.waiting_on || "",
             assignee_ids: task.assignee_ids ?? [],
             calendar_sync_enabled: task.calendar_sync_enabled,
             lead_id: task.lead_id || "",
@@ -56,8 +62,10 @@ export default function TaskModal({
             ...empty,
             title: initialValues?.title ?? "",
             category: initialValues?.category ?? "development",
+            status: initialValues?.status ?? "unplanned",
             lead_id: initialLeadId,
             project_id: initialValues?.project_id || "",
+            waiting_on: initialValues?.waiting_on || "",
             assignee_ids: defaultOwnerId ? [defaultOwnerId] : [],
           },
     );
@@ -67,6 +75,8 @@ export default function TaskModal({
     initialLeadId,
     initialValues?.category,
     initialValues?.project_id,
+    initialValues?.status,
+    initialValues?.waiting_on,
     initialValues?.title,
     open,
     task,
@@ -197,6 +207,16 @@ export default function TaskModal({
             </select>
           </label>
           <label className="text-sm font-bold">
+            Waiting on
+            <input
+              value={form.waiting_on}
+              onChange={(e) => set("waiting_on", e.target.value)}
+              className="control mt-2 w-full"
+              maxLength="240"
+              placeholder="e.g. Alex, client approval"
+            />
+          </label>
+          <label className="text-sm font-bold">
             <span className="flex items-center gap-2">
               <Link2 size={14} /> Linked opportunity
             </span>
@@ -270,10 +290,8 @@ export default function TaskModal({
         <section className="mt-5 rounded-2xl border border-zinc-100 bg-zinc-50/70 p-4">
           <div className="flex items-center gap-2">
             <Users size={16} className="text-violet-600" />
-            <p className="text-sm font-extrabold">Owners</p>
-            <span className="ml-auto text-xs text-zinc-400">
-              Choose up to two
-            </span>
+            <p className="text-sm font-extrabold">Assignee</p>
+            <span className="ml-auto text-xs text-zinc-400">Choose a clear owner</span>
           </div>
           <div className="mt-3 flex flex-wrap gap-2">
             {members.map((member) => {

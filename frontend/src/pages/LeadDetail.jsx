@@ -290,20 +290,20 @@ export default function LeadDetail() {
         <ArrowLeft size={15} /> Back to pipeline
       </Link>
 
-      {/* Revamped Light & Elegant Header Card */}
-      <section className="relative overflow-hidden rounded-[28px] border border-zinc-200/90 bg-white p-6 sm:p-8 shadow-xs">
+      {/* Revamped LeadPilot Glass Header Card */}
+      <section className="relative overflow-hidden rounded-[26px] border border-zinc-200/80 bg-white/70 backdrop-blur-md p-6 sm:p-8 shadow-xs">
         <div className="relative flex flex-col gap-6 lg:flex-row lg:items-center lg:justify-between">
           <div className="min-w-0 flex-1">
-            <span className="inline-block rounded-full bg-violet-50 px-3 py-1 text-[10px] font-extrabold uppercase tracking-wider text-violet-700 border border-violet-100/80">
+            <span className="inline-block rounded-full bg-violet-100/90 px-3 py-1 text-[10px] font-extrabold uppercase tracking-wider text-violet-800 border border-violet-200/60 shadow-2xs">
               Opportunity Profile
             </span>
-            <h1 className="mt-2 truncate text-3xl font-black tracking-tight text-zinc-950 sm:text-4xl">
+            <h1 className="mt-2 truncate text-3xl font-extrabold tracking-tight text-zinc-950 sm:text-4xl">
               {current.business_name}
             </h1>
             <p className="mt-2 text-xs font-bold text-zinc-500 flex flex-wrap items-center gap-2">
               <span>{[current.niche, current.area, current.company].filter(Boolean).join(" · ") || "Prospect"}</span>
               {current.rating && (
-                <span className="inline-flex items-center gap-0.5 font-extrabold text-amber-600 bg-amber-50 px-2 py-0.5 rounded-lg border border-amber-200/50">
+                <span className="inline-flex items-center gap-0.5 font-extrabold text-amber-700 bg-amber-100/80 px-2.5 py-0.5 rounded-full border border-amber-200/60 shadow-2xs">
                   ⭐ {current.rating} {current.reviews ? `(${current.reviews} reviews)` : ""}
                 </span>
               )}
@@ -323,7 +323,7 @@ export default function LeadDetail() {
           <div className="flex flex-wrap items-center gap-2 shrink-0">
             <button
               onClick={openNewTask}
-              className="inline-flex items-center gap-2 rounded-2xl bg-violet-600 px-4 py-2.5 text-xs font-black text-white hover:bg-violet-700 transition shadow-2xs"
+              className="button-primary liquid-button py-2.5 px-4 text-xs font-extrabold gap-2 rounded-full text-white shadow-md"
             >
               <CheckSquare2 size={15} /> Add Task
             </button>
@@ -345,7 +345,7 @@ export default function LeadDetail() {
                     }
                   }
                 }}
-                className="inline-flex items-center gap-2 rounded-2xl bg-emerald-600 px-4 py-2.5 text-xs font-black text-white hover:bg-emerald-700 transition shadow-2xs"
+                className="inline-flex items-center gap-2 rounded-full bg-emerald-600 px-4 py-2.5 text-xs font-extrabold text-white hover:bg-emerald-700 transition shadow-2xs"
               >
                 <FolderHeart size={15} /> Convert to Project
               </button>
@@ -354,7 +354,7 @@ export default function LeadDetail() {
             <select
               value={current.status}
               onChange={(e) => update({ status: e.target.value })}
-              className="rounded-2xl border border-zinc-200 bg-zinc-50 px-3 py-2.5 text-xs font-extrabold text-zinc-800 outline-none hover:bg-zinc-100 cursor-pointer"
+              className="control rounded-full border border-zinc-200 bg-white px-3 py-2 text-xs font-bold text-zinc-800 outline-none hover:bg-zinc-50 cursor-pointer"
             >
               {PIPELINE_STATUSES.map((status) => (
                 <option key={status} value={status}>
@@ -365,10 +365,10 @@ export default function LeadDetail() {
 
             <button
               onClick={() => setEditModalOpen(true)}
-              className="inline-flex h-10 items-center justify-center gap-2 rounded-2xl border border-zinc-200 bg-white px-4 text-xs font-extrabold text-zinc-700 hover:bg-zinc-50 hover:text-zinc-900 transition shadow-2xs shrink-0"
+              className="inline-flex h-9 items-center justify-center gap-2 rounded-full border border-zinc-200 bg-white px-3.5 text-xs font-bold text-zinc-700 hover:bg-zinc-50 hover:text-zinc-950 transition shadow-2xs shrink-0"
               title="Edit opportunity"
             >
-              <Edit2 size={16} /> Edit
+              <Edit2 size={15} /> Edit
             </button>
 
             <button
@@ -386,10 +386,10 @@ export default function LeadDetail() {
                   navigate("/leads");
                 }
               }}
-              className="grid h-10 w-10 place-items-center rounded-2xl border border-rose-100 bg-rose-50 text-rose-600 hover:bg-rose-100 transition"
+              className="grid h-9 w-9 place-items-center rounded-full border border-rose-200/80 bg-rose-50 text-rose-600 hover:bg-rose-100 transition shadow-2xs"
               title="Delete opportunity"
             >
-              <Trash2 size={16} />
+              <Trash2 size={15} />
             </button>
           </div>
         </div>

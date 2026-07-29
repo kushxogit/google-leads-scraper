@@ -3,7 +3,8 @@ import { CircleAlert, Loader2, RefreshCw, Sparkles, X } from "lucide-react";
 
 const apiBase = import.meta.env.VITE_API_URL || "http://localhost:3001";
 
-export default function AiNextActions({ open, onClose, project, tasks = [], leads = [] }) {
+export default function AiNextActions({ open: openProp, isOpen: isOpenProp, onClose, project, tasks = [], leads = [] }) {
+  const open = Boolean(openProp || isOpenProp);
   const [suggestions, setSuggestions] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");

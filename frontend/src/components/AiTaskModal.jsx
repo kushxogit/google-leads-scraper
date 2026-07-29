@@ -3,7 +3,8 @@ import { Bot, Loader2, Send, Sparkles, X } from "lucide-react";
 
 const apiBase = import.meta.env.VITE_API_URL || "http://localhost:3001";
 
-export default function AiTaskModal({ open, onClose, project, tasks = [], leads = [], onCreate }) {
+export default function AiTaskModal({ open: openProp, isOpen: isOpenProp, onClose, project, tasks = [], leads = [], onCreate }) {
+  const open = Boolean(openProp || isOpenProp);
   const [messages, setMessages] = useState([]);
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);

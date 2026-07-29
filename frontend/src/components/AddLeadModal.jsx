@@ -12,7 +12,8 @@ const fields = [
   ["area", "Location"],
 ];
 
-export default function AddLeadModal({ isOpen, onClose, initialStatus = "new" }) {
+export default function AddLeadModal({ isOpen: isOpenProp, open: openProp, onClose, initialStatus = "new" }) {
+  const isOpen = Boolean(isOpenProp || openProp);
   const { addLead } = useWorkspaceLeads();
   const { notify } = useFeedback();
   const [form, setForm] = useState({

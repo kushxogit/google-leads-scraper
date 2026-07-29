@@ -39,7 +39,7 @@ const STATUS_CONFIG = {
   unplanned:   { label: "Unplanned",   dot: "bg-zinc-400",   ring: "ring-zinc-200",   next: "planned"    },
   planned:     { label: "Planned",     dot: "bg-blue-500",   ring: "ring-blue-200",   next: "in_progress"},
   in_progress: { label: "In Progress", dot: "bg-violet-500", ring: "ring-violet-200", next: "waiting"    },
-  waiting:     { label: "Waiting",     dot: "bg-amber-500",  ring: "ring-amber-200",  next: "done"       },
+  waiting:     { label: "Waiting on",  dot: "bg-amber-500",  ring: "ring-amber-200",  next: "done"       },
   done:        { label: "Done",        dot: "bg-emerald-500",ring: "ring-emerald-200",next: "unplanned"  },
   cancelled:   { label: "Cancelled",   dot: "bg-red-400",    ring: "ring-red-200",    next: "unplanned"  },
 };
@@ -49,6 +49,7 @@ export default function TaskDetailPanel({
   onClose,
   onUpdate,
   onDelete,
+  onAddComment,
   members = [],
   projects = [],
   leads = [],
@@ -115,7 +116,9 @@ export default function TaskDetailPanel({
     if (!comment.trim()) return;
     setSending(true);
     try {
-      await onUpdate.__addComment(task.id, comment);
+      if (onAddComment) {
+        await onAddComment(task.id, comment);
+      }
       setComment("");
     } finally {
       setSending(false);
@@ -147,14 +150,13 @@ export default function TaskDetailPanel({
     <>
       {/* Backdrop */}
       <div
-        className="fixed inset-0 z-[70] bg-zinc-950/20 backdrop-blur-[2px]"
+        className="fixed inset-0 z-[70] bg-zinc-950/30 backdrop-blur-md transition-opacity duration-300"
         onClick={onClose}
       />
 
       {/* Panel */}
       <aside
-        className="fixed inset-y-0 right-0 z-[80] flex w-full max-w-[560px] flex-col bg-white shadow-[−24px_0_80px_rgba(0,0,0,.12)] animate-in slide-in-from-right duration-300"
-        style={{ borderLeft: "1px solid rgba(0,0,0,.07)" }}
+        className="fixed inset-y-0 right-0 z-[80] flex w-full max-w-[580px] flex-col bg-white/95 backdrop-blur-2xl rounded-l-[2.5rem] border-l border-white/90 shadow-2xl animate-in slide-in-from-right duration-300"
       >
         {/* Header */}
         <div className="flex shrink-0 items-start gap-3 border-b border-zinc-100 px-5 py-4">
@@ -264,7 +266,7 @@ export default function TaskDetailPanel({
           <div className="grid grid-cols-2 gap-3 border-b border-zinc-100 px-5 py-4 text-xs">
             {/* Assignees */}
             <div>
-              <p className="eyebrow mb-2 flex items-center gap-1"><Users size={10} /> Assignees</p>
+              <p className="eyebrow mb-2 flex items-center gap-1"><Users size={10} /> Assignee</p>
               <div className="flex flex-wrap gap-1.5">
                 {members.map((m) => {
                   const assigned = task.assignee_ids?.includes(m.id);
@@ -286,6 +288,18 @@ export default function TaskDetailPanel({
                   );
                 })}
               </div>
+            </div>
+
+            {/* Waiting on */}
+            <div>
+              <p className="eyebrow mb-2 flex items-center gap-1"><Clock size={10} /> Waiting on</p>
+              <input
+                value={task.waiting_on ?? ""}
+                onChange={(e) => save({ waiting_on: e.target.value || null })}
+                maxLength="240"
+                placeholder="Person, approval, or reply"
+                className="w-full rounded-xl border border-zinc-200 bg-zinc-50 px-2 py-1 text-xs font-semibold text-zinc-700 outline-none focus:border-violet-400"
+              />
             </div>
 
             {/* Category */}

@@ -31,6 +31,7 @@ export default function ScrapeJobs() {
   const [sending, setSending] = useState(false);
   const [reviewingId, setReviewingId] = useState(null);
   const [error, setError] = useState("");
+
   const requestConfig = useCallback(async () => {
     const {
       data: { session },
@@ -47,6 +48,7 @@ export default function ScrapeJobs() {
       },
     };
   }, [activeWorkspaceId]);
+
   const load = useCallback(async () => {
     if (!activeWorkspaceId) return;
     try {
@@ -62,11 +64,13 @@ export default function ScrapeJobs() {
       );
     }
   }, [activeWorkspaceId, requestConfig]);
+
   useEffect(() => {
     load();
     const timer = setInterval(load, 5000);
     return () => clearInterval(timer);
   }, [load]);
+
   const submit = async (e) => {
     e.preventDefault();
     if (!form.query.trim() && !form.niche.trim())
@@ -95,6 +99,7 @@ export default function ScrapeJobs() {
       setSending(false);
     }
   };
+
   const review = async (job, reviewed) => {
     setReviewingId(job.id);
     try {
@@ -115,39 +120,44 @@ export default function ScrapeJobs() {
       setReviewingId(null);
     }
   };
+
   return (
-    <div className="mx-auto max-w-7xl space-y-5">
-      <header className="rounded-[30px] bg-[#171719] p-5 text-white shadow-[0_20px_50px_rgba(43,31,70,.18)] sm:p-7">
+    <div className="mx-auto max-w-7xl space-y-4">
+      {/* Header Banner */}
+      <header className="rounded-[26px] bg-[#171719] p-5 text-white shadow-[0_20px_50px_rgba(43,31,70,.18)] sm:p-6">
         <div className="flex items-center gap-3">
-          <span className="grid h-11 w-11 place-items-center rounded-2xl liquid-button">
-            <Radar size={20} />
+          <span className="grid h-10 w-10 place-items-center rounded-2xl liquid-button shadow-md">
+            <Radar size={18} />
           </span>
           <div>
-            <p className="text-[10px] font-bold uppercase tracking-[.16em] text-violet-200">
+            <p className="text-[10px] font-extrabold uppercase tracking-[.16em] text-violet-200">
               Local intelligence
             </p>
-            <h1 className="mt-1 text-3xl font-extrabold tracking-[-.05em]">
-              Prospecting radar
+            <h1 className="mt-0.5 text-2xl sm:text-3xl font-extrabold tracking-tight">
+              Prospecting Radar
             </h1>
           </div>
         </div>
-        <p className="mt-4 max-w-xl text-sm text-zinc-300">
-          Launch local Google Maps research jobs and watch fresh opportunities
-          arrive.
+        <p className="mt-2 max-w-xl text-xs leading-5 text-zinc-300">
+          Launch local Google Maps research jobs and watch fresh opportunities arrive in real time.
         </p>
       </header>
-      <div className="grid gap-5 lg:grid-cols-[330px_1fr]">
-        <form onSubmit={submit} className="panel h-fit p-5">
+
+      <div className="grid gap-4 lg:grid-cols-[330px_1fr]">
+        {/* Search Target Form */}
+        <form onSubmit={submit} className="panel h-fit p-5 rounded-[24px]">
           <p className="eyebrow">New scan</p>
-          <h2 className="mt-1 text-lg font-extrabold">Set your target</h2>
-          <div className="mt-5 space-y-4">
+          <h2 className="mt-0.5 text-base font-extrabold text-zinc-950">Set your target</h2>
+
+          <div className="mt-4 space-y-3.5 text-xs">
             <Input
               label="Search query"
               value={form.query}
               onChange={(query) => setForm({ ...form, query })}
               placeholder="Dentists in Jaipur"
             />
-            <div className="grid gap-3 sm:grid-cols-2">
+
+            <div className="grid gap-2.5 sm:grid-cols-2">
               <Input
                 label="Industry"
                 value={form.niche}
@@ -161,8 +171,9 @@ export default function ScrapeJobs() {
                 placeholder="Jaipur"
               />
             </div>
-            <div className="grid gap-3 sm:grid-cols-2">
-              <label className="text-xs font-extrabold uppercase tracking-[.12em] text-zinc-400">
+
+            <div className="grid gap-2.5 sm:grid-cols-2">
+              <label className="text-[10px] font-extrabold uppercase tracking-wider text-zinc-400">
                 Max leads
                 <input
                   type="number"
@@ -172,133 +183,145 @@ export default function ScrapeJobs() {
                   onChange={(e) =>
                     setForm({ ...form, limit: Number(e.target.value) })
                   }
-                  className="control mt-2 w-full normal-case tracking-normal"
+                  className="control mt-1 w-full text-xs rounded-xl"
                 />
               </label>
-              <label className="text-xs font-extrabold uppercase tracking-[.12em] text-zinc-400">
+              <label className="text-[10px] font-extrabold uppercase tracking-wider text-zinc-400">
                 Source
                 <select
                   value={form.source}
                   onChange={(e) => setForm({ ...form, source: e.target.value })}
-                  className="control mt-2 w-full normal-case tracking-normal"
+                  className="control mt-1 w-full text-xs rounded-xl"
                 >
                   <option>Google Maps</option>
                 </select>
               </label>
             </div>
-            <label className="flex cursor-pointer items-center gap-2 rounded-2xl bg-zinc-50 p-3 text-sm font-semibold text-zinc-600">
+
+            <label className="flex cursor-pointer items-center gap-2 rounded-xl bg-zinc-100/80 p-2.5 text-xs font-semibold text-zinc-700">
               <input
                 type="checkbox"
                 checked={form.headless}
                 onChange={(e) =>
                   setForm({ ...form, headless: e.target.checked })
                 }
-                className="accent-violet-600"
+                className="accent-violet-600 rounded"
               />{" "}
               Run invisibly
             </label>
-            <details className="rounded-2xl border border-zinc-100 bg-zinc-50/70 p-3">
-              <summary className="cursor-pointer text-sm font-extrabold text-zinc-700">
+
+            <details className="rounded-xl border border-zinc-200/70 bg-zinc-50/70 p-2.5">
+              <summary className="cursor-pointer text-xs font-extrabold text-zinc-800">
                 Filters
               </summary>
-              <label className="mt-3 flex cursor-pointer items-center gap-2 text-sm font-semibold text-zinc-600">
+              <label className="mt-2.5 flex cursor-pointer items-center gap-2 text-xs font-semibold text-zinc-700">
                 <input
                   type="checkbox"
                   checked={form.exclude_website}
                   onChange={(e) =>
                     setForm({ ...form, exclude_website: e.target.checked })
                   }
-                  className="accent-violet-600"
+                  className="accent-violet-600 rounded"
                 />
                 Exclude businesses with a website
               </label>
-              <p className="mt-2 text-xs leading-5 text-zinc-500">
+              <p className="mt-1.5 text-[11px] leading-4 text-zinc-400">
                 Only save businesses for which Google Maps does not list a website.
               </p>
             </details>
+
             <button
               disabled={sending}
-              className="button-primary liquid-button w-full"
+              className="button-primary liquid-button w-full justify-center rounded-full text-xs py-2.5 font-extrabold text-white"
             >
               {sending ? (
-                <Loader2 className="animate-spin" size={17} />
+                <Loader2 className="animate-spin" size={15} />
               ) : (
-                <Play size={16} fill="currentColor" />
+                <Play size={14} fill="currentColor" />
               )}
               {sending ? "Starting…" : "Launch scan"}
             </button>
+
             {error && (
               <p
                 role="alert"
-                className="rounded-2xl bg-rose-50 p-3 text-sm text-rose-600"
+                className="rounded-xl bg-rose-50 p-2.5 text-xs text-rose-600 font-semibold border border-rose-200/60"
               >
                 {error}
               </p>
             )}
           </div>
         </form>
-        <section className="panel overflow-hidden">
-          <div className="flex items-center justify-between border-b border-zinc-100 px-5 py-4">
+
+        {/* Live Queue Container */}
+        <section className="panel overflow-hidden rounded-[24px]">
+          <div className="flex items-center justify-between border-b border-zinc-200/60 px-5 py-3.5">
             <div>
               <p className="eyebrow">Live queue</p>
-              <h2 className="mt-0.5 text-lg font-extrabold">Recent scans</h2>
+              <h2 className="mt-0.5 text-base font-extrabold text-zinc-950">Recent scans</h2>
             </div>
-            <span className="mono rounded-xl bg-zinc-100 px-2.5 py-1 text-xs text-zinc-500">
+            <span className="rounded-full bg-zinc-100 px-3 py-1 text-xs font-bold text-zinc-600 border border-zinc-200/60">
               {jobs.length} jobs
             </span>
           </div>
+
           <div className="divide-y divide-zinc-100 md:hidden">
             {jobs.map((job) => (
-              <article key={job.id} className="space-y-3 px-5 py-4">
+              <article key={job.id} className="space-y-2.5 px-5 py-3.5">
                 <div className="flex items-start justify-between gap-3">
                   <div className="min-w-0">
-                    <p className="truncate font-extrabold text-zinc-800">
+                    <p className="truncate font-extrabold text-zinc-950 text-xs">
                       {job.query}
                     </p>
-                    <p className="mt-1 text-xs text-zinc-400">
-                      {job.niche} {job.area && `Â· ${job.area}`} Â· Target {job.lead_limit}
+                    <p className="mt-0.5 text-[11px] text-zinc-400">
+                      {job.niche} {job.area && `· ${job.area}`} · Target {job.lead_limit}
                     </p>
                   </div>
                   <Status status={job.status} />
                 </div>
+
                 <div className="flex items-center justify-between gap-3 text-xs">
                   <span className="text-zinc-500">
-                    Found <b className="text-zinc-800">{job.found_count}</b> Â· Saved{" "}
+                    Found <b className="text-zinc-950">{job.found_count}</b> · Saved{" "}
                     <b className="text-emerald-600">{job.saved_count}</b>
                   </span>
-                  <span className="shrink-0 text-zinc-400">
+                  <span className="shrink-0 text-zinc-400 text-[11px]">
                     {new Date(job.created_at + "Z").toLocaleTimeString([], {
                       hour: "2-digit",
                       minute: "2-digit",
                     })}
                   </span>
                 </div>
+
                 {job.error_message && (
-                  <p className="text-xs text-rose-500">{job.error_message}</p>
+                  <p className="text-xs text-rose-500 font-semibold">{job.error_message}</p>
                 )}
+
                 {job.status === "completed" && job.saved_count > 0 && (
-                  <ReviewButton
-                    job={job}
-                    reviewing={reviewingId === job.id}
-                    onReview={review}
-                  />
-                )}
-                {job.status === "completed" && job.saved_count > 0 && (
-                  <Link to={`/leads?scrape_job=${job.id}`} className="inline-flex text-xs font-extrabold text-violet-600">
-                    View saved leads â†’
-                  </Link>
+                  <div className="flex items-center gap-2 pt-1">
+                    <ReviewButton
+                      job={job}
+                      reviewing={reviewingId === job.id}
+                      onReview={review}
+                    />
+                    <Link to={`/leads?scrape_job=${job.id}`} className="text-xs font-extrabold text-violet-600 hover:underline">
+                      View saved leads →
+                    </Link>
+                  </div>
                 )}
               </article>
             ))}
+
             {!jobs.length && (
-              <p className="p-10 text-center text-sm text-zinc-400">
+              <p className="p-10 text-center text-xs text-zinc-400 font-medium">
                 Your scans will appear here.
               </p>
             )}
           </div>
+
           <div className="hidden overflow-x-auto md:block">
-            <table className="min-w-[730px] w-full text-left text-sm">
-              <thead className="bg-zinc-50 text-[10px] uppercase tracking-[.14em] text-zinc-400">
+            <table className="min-w-[730px] w-full text-left text-xs">
+              <thead className="bg-zinc-50/80 text-[10px] uppercase tracking-wider text-zinc-400 font-extrabold">
                 <tr>
                   <th className="px-5 py-3">Query</th>
                   <th className="px-5 py-3">State</th>
@@ -306,56 +329,55 @@ export default function ScrapeJobs() {
                   <th className="px-5 py-3">Started</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-zinc-100">
+              <tbody className="divide-y divide-zinc-100/70">
                 {jobs.map((job) => (
-                  <tr key={job.id} className="hover:bg-violet-50/45">
-                    <td className="px-5 py-4">
-                      <p className="font-extrabold text-zinc-800">
+                  <tr key={job.id} className="hover:bg-violet-50/40 transition">
+                    <td className="px-5 py-3.5">
+                      <p className="font-extrabold text-zinc-950">
                         {job.query}
                       </p>
-                      <p className="mt-1 text-xs text-zinc-400">
+                      <p className="mt-0.5 text-[11px] text-zinc-400">
                         {job.niche} {job.area && `· ${job.area}`} · Target{" "}
                         {job.lead_limit}
                       </p>
                     </td>
-                    <td className="px-5 py-4">
+                    <td className="px-5 py-3.5">
                       <Status status={job.status} />
                     </td>
-                    <td className="px-5 py-4">
+                    <td className="px-5 py-3.5">
                       <div className="flex gap-3 text-xs">
                         <span className="text-zinc-500">
-                          Found{" "}
-                          <b className="text-zinc-800">{job.found_count}</b>
+                          Found <b className="text-zinc-950">{job.found_count}</b>
                         </span>
-                        <span className="text-emerald-600">
+                        <span className="text-emerald-600 font-bold">
                           Saved <b>{job.saved_count}</b>
                         </span>
                       </div>
                       {job.error_message && (
                         <p
                           title={job.error_message}
-                          className="mt-1 max-w-[210px] truncate text-xs text-rose-500"
+                          className="mt-1 max-w-[210px] truncate text-xs text-rose-500 font-semibold"
                         >
                           {job.error_message}
                         </p>
                       )}
                       {job.status === "completed" && job.saved_count > 0 && (
-                        <ReviewButton
-                          job={job}
-                          reviewing={reviewingId === job.id}
-                          onReview={review}
-                        />
-                      )}
-                      {job.status === "completed" && job.saved_count > 0 && (
-                        <Link
-                          to={`/leads?scrape_job=${job.id}`}
-                          className="mt-2 inline-flex text-[11px] font-extrabold text-violet-600"
-                        >
-                          View saved leads →
-                        </Link>
+                        <div className="mt-1.5 flex items-center gap-2">
+                          <ReviewButton
+                            job={job}
+                            reviewing={reviewingId === job.id}
+                            onReview={review}
+                          />
+                          <Link
+                            to={`/leads?scrape_job=${job.id}`}
+                            className="inline-flex text-[11px] font-extrabold text-violet-600 hover:underline"
+                          >
+                            View saved leads →
+                          </Link>
+                        </div>
                       )}
                     </td>
-                    <td className="px-5 py-4 text-xs text-zinc-400">
+                    <td className="px-5 py-3.5 text-xs text-zinc-400 font-semibold">
                       {new Date(job.created_at + "Z").toLocaleTimeString([], {
                         hour: "2-digit",
                         minute: "2-digit",
@@ -363,11 +385,12 @@ export default function ScrapeJobs() {
                     </td>
                   </tr>
                 ))}
+
                 {!jobs.length && (
                   <tr>
                     <td
                       colSpan="4"
-                      className="p-12 text-center text-sm text-zinc-400"
+                      className="p-12 text-center text-xs text-zinc-400 font-medium"
                     >
                       Your scans will appear here.
                     </td>
@@ -381,26 +404,28 @@ export default function ScrapeJobs() {
     </div>
   );
 }
+
 function Input({ label, value, onChange, placeholder }) {
   return (
-    <label className="block text-xs font-extrabold uppercase tracking-[.12em] text-zinc-400">
+    <label className="block text-[10px] font-extrabold uppercase tracking-wider text-zinc-400">
       {label}
       <input
         value={value}
         onChange={(e) => onChange(e.target.value)}
         placeholder={placeholder}
-        className="control mt-2 w-full normal-case tracking-normal"
+        className="control mt-1 w-full text-xs rounded-xl"
       />
     </label>
   );
 }
+
 function ReviewButton({ job, reviewing, onReview }) {
   return (
     <button
       type="button"
       disabled={reviewing}
       onClick={() => onReview(job, !job.reviewed_at)}
-      className={`rounded-lg px-2 py-1 text-[10px] font-extrabold ${job.reviewed_at ? "bg-emerald-50 text-emerald-700" : "bg-zinc-100 text-zinc-600"}`}
+      className={`rounded-full px-2.5 py-0.5 text-[10px] font-extrabold shadow-2xs border ${job.reviewed_at ? "bg-emerald-100/90 text-emerald-800 border-emerald-200/70" : "bg-zinc-100 text-zinc-600 border-zinc-200/60"}`}
     >
       {reviewing
         ? "Saving…"
@@ -410,19 +435,20 @@ function ReviewButton({ job, reviewing, onReview }) {
     </button>
   );
 }
+
 function Status({ status }) {
   const props = {
-    completed: [CheckCircle2, "bg-emerald-50 text-emerald-600", "Completed"],
-    running: [Loader2, "bg-violet-50 text-violet-600", "Running"],
-    failed: [XCircle, "bg-rose-50 text-rose-500", "Failed"],
-    queued: [Clock, "bg-zinc-100 text-zinc-500", "Queued"],
-  }[status] || [Clock, "bg-zinc-100 text-zinc-500", status];
+    completed: [CheckCircle2, "bg-emerald-100/90 text-emerald-800 border border-emerald-200/70", "Completed"],
+    running: [Loader2, "bg-violet-100/90 text-violet-800 border border-violet-200/70", "Running"],
+    failed: [XCircle, "bg-rose-100/90 text-rose-700 border border-rose-200/70", "Failed"],
+    queued: [Clock, "bg-zinc-100 text-zinc-600 border border-zinc-200/60", "Queued"],
+  }[status] || [Clock, "bg-zinc-100 text-zinc-600 border border-zinc-200/60", status];
   const [Icon, css, text] = props;
   return (
     <span
-      className={`inline-flex items-center gap-1.5 rounded-xl px-2.5 py-1 text-xs font-bold ${css}`}
+      className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-[11px] font-extrabold shadow-2xs ${css}`}
     >
-      <Icon size={13} className={status === "running" ? "animate-spin" : ""} />
+      <Icon size={12} className={status === "running" ? "animate-spin" : ""} />
       {text}
     </span>
   );

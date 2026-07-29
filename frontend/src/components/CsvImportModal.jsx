@@ -31,11 +31,13 @@ const pick = (row, ...names) =>
     .find((value) => String(value ?? "").trim()) ?? "";
 
 export default function CsvImportModal({
-  open,
+  open: openProp,
+  isOpen: isOpenProp,
   onClose,
   addLead,
   existingLeads,
 }) {
+  const open = Boolean(openProp || isOpenProp);
   const [rows, setRows] = useState([]);
   const [message, setMessage] = useState("");
   const [importing, setImporting] = useState(false);
