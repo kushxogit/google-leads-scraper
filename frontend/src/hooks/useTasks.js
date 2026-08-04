@@ -172,6 +172,7 @@ export function useWorkspaceTasks() {
       calendar_sync_enabled: Boolean(input.calendar_sync_enabled),
       source_note_id: input.source_note_id || null,
       source_note_line_id: input.source_note_line_id || null,
+      source_interaction_id: input.source_interaction_id || null,
     };
     const task = await result(
       supabase.from("tasks").insert(payload).select().single(),
@@ -205,6 +206,7 @@ export function useWorkspaceTasks() {
       "scheduled_start",
       "scheduled_end",
       "calendar_sync_enabled",
+      "source_interaction_id",
     ];
     const cleanPayload = Object.fromEntries(
       Object.entries(payload).filter(([key]) => allowed.includes(key)),

@@ -132,7 +132,7 @@ function taskAssistantPrompt({ project, projectTasks, opportunities, hasAssistan
 
 Current project: ${project ? project.name : "No project selected"}.
 Current project task state:
-${projectTasks.length ? projectTasks.map((task, index) => `${index + 1}. [${task.status}] ${task.title}${task.priority ? ` (priority: ${task.priority})` : ""}${task.due_at ? ` (due: ${task.due_at})` : ""}${task.lead_name ? ` (opportunity: ${task.lead_name})` : ""}${task.description ? ` — ${task.description}` : ""}`).join("\n") : "No existing tasks in this project."}
+${projectTasks.length ? projectTasks.map((task, index) => `${index + 1}. [${task.status}] ${task.title}${task.priority ? ` (priority: ${task.priority})` : ""}${task.due_at ? ` (due: ${task.due_at})` : ""}${task.lead_name ? ` (opportunity: ${task.lead_name})` : ""}${task.description ? ` â€” ${task.description}` : ""}`).join("\n") : "No existing tasks in this project."}
 Lead association is disabled for this project-planning flow. Create the task in the selected project without a lead.
 
 Return only valid JSON. Do not use markdown or add fields outside this schema:
@@ -140,7 +140,7 @@ Return only valid JSON. Do not use markdown or add fields outside this schema:
 
 The selected project is already confirmed and is always where this task will be created. Never ask the user to confirm, choose, or associate the project. A project task does not need to be linked to an opportunity: never ask which opportunity or lead to associate. When no opportunity is clearly relevant, set lead_id to null/empty and still create the task in the selected project.
 
-Use the current project task state to resolve references such as “it”, “this”, or a named person. If “him” cannot be resolved from the project state, preserve the user's wording in the task title/description instead of asking about a lead.
+Use the current project task state to resolve references such as â€œitâ€, â€œthisâ€, or a named person. If â€œhimâ€ cannot be resolved from the project state, preserve the user's wording in the task title/description instead of asking about a lead.
 
 If the user provides a numbered list, bullet list, or multiple distinct action lines, create one separate draft for each item, preserving their order. Do not merge list items. Return at most 10 drafts. A normal single request must return exactly one draft.
 
@@ -151,14 +151,14 @@ Never invent dates, opportunity IDs, commitments, or facts not provided by the u
 function nextActionsPrompt({ project, tasks, opportunities }) {
   return `You are LeadPilot's pragmatic task coach. Suggest the few highest-value next actions that would move this work forward.
 
-Scope: ${project ? `project “${project.name}”` : "the current Tasks view"}.
+Scope: ${project ? `project â€œ${project.name}â€` : "the current Tasks view"}.
 Current tasks:
-${tasks.length ? tasks.map((task, index) => `${index + 1}. [${task.status}] ${task.title}${task.priority ? ` (priority: ${task.priority})` : ""}${task.due_at ? ` (due: ${task.due_at})` : ""}${task.lead_name ? ` (opportunity: ${task.lead_name})` : ""}${task.description ? ` — ${task.description}` : ""}`).join("\n") : "No tasks yet."}
+${tasks.length ? tasks.map((task, index) => `${index + 1}. [${task.status}] ${task.title}${task.priority ? ` (priority: ${task.priority})` : ""}${task.due_at ? ` (due: ${task.due_at})` : ""}${task.lead_name ? ` (opportunity: ${task.lead_name})` : ""}${task.description ? ` â€” ${task.description}` : ""}`).join("\n") : "No tasks yet."}
 
 Return only valid JSON with this schema, no markdown:
 {"suggestions":[{"title":"string","description":"string","reason":"short explanation","category":"meeting|document|proposal|follow_up|development|admin","priority":"low|medium|high|urgent","due_at":"ISO 8601 string or null","lead_id":"known ID or empty"}]}
 
-Suggest 2–4 specific, independently actionable tasks. Prioritize overdue or blocked work, then work with a clear dependency or customer impact. Do not repeat an existing task, invent deadlines, people, commitments, or lead IDs. If there are no tasks, propose foundational first steps. Keep titles under 90 characters, descriptions under 240 characters, and reasons under 140 characters.`;
+Suggest 2â€“4 specific, independently actionable tasks. Prioritize overdue or blocked work, then work with a clear dependency or customer impact. Do not repeat an existing task, invent deadlines, people, commitments, or lead IDs. If there are no tasks, propose foundational first steps. Keep titles under 90 characters, descriptions under 240 characters, and reasons under 140 characters.`;
 }
 
 function sanitizeConversation(value) {
@@ -235,5 +235,64 @@ function parseJsonContent(content) {
 function cleanText(value, maxLength) {
   return typeof value === "string" ? value.trim().slice(0, maxLength) : "";
 }
+
+router.post("/interaction", async (req, res) => {
+  if (!process.env.OPENROUTER_API_KEY) {
+    return res.status(503).json({ error: "Interaction AI is not configured. Add OPENROUTER_API_KEY to the backend environment." });
+  }
+  const rawNote = cleanText(req.body?.rawNote, 20000);
+  if (!rawNote) return res.status(400).json({ error: "Write an interaction note first." });
+  const lead = req.body?.lead && typeof req.body.lead === "object" ? {
+    name: cleanText(req.body.lead.name, 180),
+    company: cleanText(req.body.lead.company, 180),
+    status: cleanText(req.body.lead.status, 40),
+    service: cleanText(req.body.lead.service, 180),
+    paymentStatus: cleanText(req.body.lead.paymentStatus, 40),
+  } : {};
+  try {
+    const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
+      method: "POST",
+      headers: { Authorization: `Bearer ${process.env.OPENROUTER_API_KEY}`, "Content-Type": "application/json", "X-Title": "LeadPilot Interaction Processor" },
+      body: JSON.stringify({
+        model: "openrouter/free",
+        temperature: 0.1,
+        max_tokens: 900,
+        messages: [{
+          role: "system",
+          content: `Extract structured CRM suggestions from a free-form client interaction. Current client: ${JSON.stringify(lead)}.
+Return only valid JSON using this exact shape:
+Confidence is an overall 0-to-1 score for how directly the note supports the extracted fields. Keep it below 0.75 when lifecycle, payment, feedback, or follow-up details are ambiguous.
+{"confidence":0.0,"channel":"call|email|whatsapp|meeting|other","summary":"short summary","outcome":"what happened","next_step":"next action","follow_up_date":"YYYY-MM-DD or null","feedback_status":"unchanged|pending|received|not_required","payment_status":"unchanged|not_set|pending|partial|paid|not_applicable","service":"service mentioned or empty","suggested_status":"new|contacted|qualified|proposal|won|lost or null"}
+Infer cautiously. Never invent dates, money, commitments, or facts. Use null/empty/unchanged when the note does not support a value. The raw note is the source of truth.`
+        }, { role: "user", content: rawNote }],
+      }),
+    });
+    const body = await response.json().catch(() => null);
+    if (!response.ok) return res.status(response.status >= 500 ? 503 : 502).json({ error: body?.error?.message || "OpenRouter could not process this interaction." });
+    const parsed = parseJsonContent(body?.choices?.[0]?.message?.content);
+    if (!parsed) throw new Error("The AI returned an invalid interaction summary.");
+    const feedback = new Set(["unchanged", "pending", "received", "not_required"]);
+    const payment = new Set(["unchanged", "not_set", "pending", "partial", "paid", "not_applicable"]);
+    const statuses = new Set(["new", "contacted", "qualified", "proposal", "won", "lost"]);
+    const confidence = Number(parsed.confidence);
+    const followUp = cleanText(parsed.follow_up_date, 30);
+    return res.json({ structured: {
+      ai_confidence: Number.isFinite(confidence) ? Math.max(0, Math.min(1, confidence)) : 0,
+      channel: ["call", "email", "whatsapp", "meeting", "other"].includes(parsed.channel) ? parsed.channel : "other",
+      summary: cleanText(parsed.summary, 600),
+      outcome: cleanText(parsed.outcome, 600),
+      next_step: cleanText(parsed.next_step, 600),
+      follow_up_date: /^\d{4}-\d{2}-\d{2}$/.test(followUp) ? followUp : null,
+      feedback_status: feedback.has(parsed.feedback_status) ? parsed.feedback_status : "unchanged",
+      payment_status: payment.has(parsed.payment_status) ? parsed.payment_status : "unchanged",
+      service: cleanText(parsed.service, 180),
+      suggested_status: statuses.has(parsed.suggested_status) ? parsed.suggested_status : null,
+    }});
+  } catch (error) {
+    console.error("AI interaction processing failed:", error);
+    return res.status(503).json({ error: error.message || "Unable to process this interaction right now." });
+  }
+});
+
 
 module.exports = router;

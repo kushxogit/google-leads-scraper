@@ -228,6 +228,17 @@ export default function LeadsTable() {
     );
   };
 
+  const moveLeadToStage = async (leadId, status) => {
+    const lead = leads.find((item) => item.id === leadId);
+    if (!lead || lead.status === status) return;
+    try {
+      await updateLead(leadId, { status });
+      notify(`Moved ${lead.business_name} to ${labels[status]}.`);
+    } catch (error) {
+      notify(error.message || "Could not move this lead.", "error");
+    }
+  };
+
   const exportFilteredCsv = () => {
     if (!visible.length) {
       notify("No leads to export", "error");
@@ -877,12 +888,12 @@ export default function LeadsTable() {
                 onToggleCollapse={() => toggleCollapseStage(status)}
                 onToggle={toggle}
                 onOpen={handleOpenLeadDetail}
-                onDrop={(id) => updateLead(id, { status })}
+                onDrop={(id) => moveLeadToStage(id, status)}
                 tasks={taskApi.tasks}
                 members={taskApi.members}
                 onAddTask={setTaskLead}
                 onAddLeadToStage={() => handleOpenAddLeadModal(status)}
-                onQuickMoveStage={(leadId, newStatus) => updateLead(leadId, { status: newStatus })}
+                onQuickMoveStage={moveLeadToStage}
               />
             ))}
           </div>
@@ -1241,14 +1252,20 @@ function KanbanColumn({
     <section
       onDragOver={(e) => {
         e.preventDefault();
+        e.dataTransfer.dropEffect = "move";
         setIsDragOver(true);
       }}
-      onDragLeave={() => setIsDragOver(false)}
+      onDragLeave={(e) => {
+        if (!e.currentTarget.contains(e.relatedTarget)) setIsDragOver(false);
+      }}
       onDrop={(e) => {
         e.preventDefault();
         setIsDragOver(false);
-        const id = e.dataTransfer.getData("lead-id");
-        if (id) onDrop(id);
+        const id =
+          e.dataTransfer.getData("application/x-pipeline-lead-id") ||
+          e.dataTransfer.getData("text/plain") ||
+          e.dataTransfer.getData("lead-id");
+        if (id) void onDrop(id);
       }}
       className={`flex w-[calc(100vw-2.5rem)] sm:w-[305px] shrink-0 snap-center flex-col rounded-[24px] border p-3 shadow-2xs transition-all duration-200 ${cfg.columnBg} ${
         isDragOver ? `${cfg.dropRing} scale-[1.01] ring-2` : ""
@@ -1378,6 +1395,9 @@ function KanbanCard({
     <article
       draggable
       onDragStart={(e) => {
+        e.dataTransfer.effectAllowed = "move";
+        e.dataTransfer.setData("application/x-pipeline-lead-id", lead.id);
+        e.dataTransfer.setData("text/plain", lead.id);
         e.dataTransfer.setData("lead-id", lead.id);
       }}
       onClick={onOpen}

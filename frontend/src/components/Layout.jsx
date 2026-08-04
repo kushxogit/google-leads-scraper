@@ -26,15 +26,36 @@ import { useAuthWorkspace } from "../context/authWorkspace";
 import { useNotifications } from "../hooks/useTasks";
 import CommandPalette from "./CommandPalette";
 
-const nav = [
-  ["/", "Home", LayoutDashboard],
-  ["/leads", "Pipeline", Users],
-  ["/rewind", "Today", RotateCcw],
-  ["/tasks", "Tasks", ClipboardList],
-  ["/notes", "Notes", NotebookPen],
-  ["/project-chat", "Project chat", MessageSquare],
-  ["/jobs", "Find leads", Target],
-  ["/settings", "Settings", Settings],
+const navSections = [
+  {
+    label: "Core",
+    items: [
+      ["/", "Today", LayoutDashboard],
+      ["/clients", "Clients", Users],
+    ],
+  },
+  {
+    label: "Work",
+    items: [
+      ["/leads", "Pipeline", Users],
+      ["/tasks", "Tasks", ClipboardList],
+      ["/rewind", "Follow-ups", RotateCcw],
+      ["/notes", "Notes", NotebookPen],
+      ["/project-chat", "Project chat", MessageSquare],
+    ],
+  },
+  {
+    label: "Grow",
+    items: [
+      ["/jobs", "Find leads", Target],
+    ],
+  },
+  {
+    label: "Workspace",
+    items: [
+      ["/settings", "Settings", Settings],
+    ],
+  },
 ];
 
 export default function Layout({ children }) {
@@ -120,18 +141,29 @@ export default function Layout({ children }) {
         )}
 
         {/* Navigation Items */}
-        <nav className="mt-2 space-y-1.5 px-0.5">
-          {nav.map(([to, label, Icon]) => (
-            <NavItem
-              key={to}
-              to={to}
-              label={label}
-              Icon={Icon}
-              collapsed={collapsed}
-              close={() => setMobileOpen(false)}
-            />
+                <div className="mt-2 space-y-4 px-0.5">
+          {navSections.map(({ label, items }) => (
+            <div key={label}>
+              {!collapsed && (
+                <p className="px-3 pb-1 text-[9px] font-extrabold uppercase tracking-[.18em] text-zinc-500">
+                  {label}
+                </p>
+              )}
+              <div className="space-y-1.5">
+                {items.map(([to, itemLabel, Icon]) => (
+                  <NavItem
+                    key={to}
+                    to={to}
+                    label={itemLabel}
+                    Icon={Icon}
+                    collapsed={collapsed}
+                    close={() => setMobileOpen(false)}
+                  />
+                ))}
+              </div>
+            </div>
           ))}
-        </nav>
+        </div>
 
         {/* Footer */}
         <div className="mt-auto pt-2">

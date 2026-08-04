@@ -15,7 +15,10 @@ import { queryClient, queryPersister } from "./lib/queryClient";
 import { supabaseConfigError } from "./lib/supabase";
 import FeedbackProvider from "./components/FeedbackProvider";
 
+const Today = lazy(() => import("./pages/Today"));
 const DashboardOverview = lazy(() => import("./pages/DashboardOverview"));
+const Clients = lazy(() => import("./pages/Clients"));
+const More = lazy(() => import("./pages/More"));
 const ScrapeJobs = lazy(() => import("./pages/ScrapeJobs"));
 const LeadsTable = lazy(() => import("./pages/LeadsTable"));
 const LeadDetail = lazy(() => import("./pages/LeadDetail"));
@@ -62,7 +65,10 @@ function App() {
                   <Routes>
                     <Route path="/invite" element={<InviteAccept />} />
                     <Route path="/reset-password" element={<ResetPassword />} />
-                    <Route path="/" element={<DashboardOverview />} />
+                    <Route path="/" element={<Today />} />
+                    <Route path="/dashboard" element={<DashboardOverview />} />
+                    <Route path="/clients" element={<Clients />} />
+                    <Route path="/more" element={<More />} />
                     <Route path="/jobs" element={<ScrapeJobs />} />
                     <Route path="/leads" element={<LeadsTable />} />
                     <Route path="/leads/:id" element={<LeadDetail />} />
@@ -100,7 +106,7 @@ export default App;
 function PageLoader() {
   return (
     <div className="panel p-8 text-sm font-semibold text-zinc-500">
-      Opening workspace…
+      Opening workspaceÃ¢â‚¬Â¦
     </div>
   );
 }
@@ -109,12 +115,12 @@ function NotFound() {
   return (
     <div className="mx-auto grid min-h-[60vh] max-w-xl place-items-center">
       <section className="panel w-full p-8 text-center">
-        <p className="eyebrow">404 · Lost signal</p>
+        <p className="eyebrow">404 Ã‚Â· Lost signal</p>
         <h1 className="mt-2 text-3xl font-extrabold tracking-[-.05em]">
           This page is not part of your workspace.
         </h1>
         <p className="mt-3 text-sm text-zinc-500">
-          Return to today’s work or open the pipeline.
+          Return to todayÃ¢â‚¬â„¢s work or open the pipeline.
         </p>
         <div className="mt-6 flex flex-col gap-2 sm:flex-row sm:justify-center">
           <Link to="/" className="button-primary w-full sm:w-auto">

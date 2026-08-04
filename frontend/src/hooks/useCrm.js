@@ -11,7 +11,7 @@ export const PIPELINE_STATUSES = [
   "won",
   "lost",
 ];
-const leadKey = (workspaceId) => ["leads", workspaceId];
+const leadKey = (workspaceId) => ["leads", workspaceId, "canonical-status-v2"];
 const metadataKeys = [
   "niche",
   "area",
@@ -29,11 +29,13 @@ const metadataKeys = [
 
 export function fromDbLead(row) {
   if (!row) return row;
-  const meta = row.metadata ?? {};
+  const meta = { ...(row.metadata ?? {}) };
+  delete meta.status;
   return {
     ...row,
     business_name: row.name,
     ...meta,
+    status: row.status,
     score: Number(meta.score ?? 0),
     called: row.status === "contacted" ? 1 : 0,
   };
@@ -41,6 +43,7 @@ export function fromDbLead(row) {
 
 export function toDbLead(input, userId) {
   const metadata = { ...(input.metadata ?? {}) };
+  delete metadata.status;
   metadataKeys.forEach((key) => {
     if (input[key] !== undefined) metadata[key] = input[key];
   });
@@ -131,14 +134,31 @@ export function useWorkspaceLeads() {
     const existing = query.data?.find((lead) => lead.id === id);
     const payload = toDbLead({ ...existing, ...changes });
     delete payload.created_by;
-    await requireResult(
-      supabase
-        .from("leads")
-        .update(payload)
-        .eq("id", id)
-        .eq("workspace_id", activeWorkspaceId),
+    const previousLeads = client.getQueryData(leadKey(activeWorkspaceId));
+    client.setQueryData(leadKey(activeWorkspaceId), (current = []) =>
+      current.map((lead) => (lead.id === id ? { ...lead, ...changes } : lead)),
     );
-    await refresh();
+    try {
+      const data = await requireResult(
+        supabase
+          .from("leads")
+          .update(payload)
+          .eq("id", id)
+          .eq("workspace_id", activeWorkspaceId)
+          .select()
+          .single(),
+      );
+      const updatedLead = fromDbLead(data);
+      client.setQueryData(leadKey(activeWorkspaceId), (current = []) =>
+        current.map((lead) => (lead.id === id ? updatedLead : lead)),
+      );
+      return updatedLead;
+    } catch (error) {
+      client.setQueryData(leadKey(activeWorkspaceId), previousLeads);
+      throw error;
+    } finally {
+      await refresh();
+    }
   };
   const deleteLead = async (id) => {
     await requireResult(
